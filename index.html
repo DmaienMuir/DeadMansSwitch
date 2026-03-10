@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.5.15</title>
+<title>Dead Man's Switch v0.6.9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -829,12 +829,13 @@ body {
 
 <div id="power-flash"></div>
 <div id="clear-flash"></div>
+<div id="combo-banner"><div id="combo-main"></div><div class="combo-sub" id="combo-sub"></div></div>
 
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.5.15</div>
-  <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.<br>Every card you play is gone forever.</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.9</div>
+  <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
     One card per hand · 7 dumps your suit · Same numbers stack
@@ -883,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.5.15</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.9</div>
     </div>
   </div>
 
@@ -1008,54 +1009,69 @@ const ROUND_MAXDISCS = new Array(25).fill(4);  // flat 4 throughout
 
 const ALL_RELICS = [
   // ── COMMON ($5 / sell $2) ────────────────────────────────────
-  { key:'the_fool',       tier:'common',     cost:5,  sell:2, art:'🃏', name:'The Fool',         desc:'Your first hand played each round scores ×2.' },
-  { key:'dead_mans_hand', tier:'common',     cost:5,  sell:2, art:'💀', name:"Dead Man's Hand",   desc:'Aces score 200 pts instead of 110.' },
-  { key:'seedling',       tier:'common',     cost:5,  sell:2, art:'🌱', name:'Seedling',          desc:'7s score +75 bonus points each.' },
-  { key:'daisy_chain',    tier:'common',     cost:5,  sell:2, art:'🔗', name:'Daisy Chain',       desc:'In any multi-card hand, each card after the first adds +25 flat bonus.' },
-  { key:'lucky_sevens',   tier:'common',     cost:5,  sell:2, art:'7️⃣', name:'Lucky Sevens',      desc:'7s score +100 bonus points.' },
-  { key:'iron_gut',       tier:'common',     cost:5,  sell:2, art:'🪙', name:'Iron Gut',          desc:'2s score double base points.' },
-  { key:'penny_pincher',  tier:'common',     cost:5,  sell:2, art:'💰', name:'Penny Pincher',     desc:'Each unused free discard at round end upgrades a random L0 card in your deck to L1.' },
-  { key:'swift_hand',     tier:'common',     cost:5,  sell:2, art:'⚡', name:'Swift Hand',        desc:'Gain +1 extra hand next round for every 3 unused hands this round (max +2).' },
-  { key:'dusty_tome',     tier:'common',     cost:5,  sell:2, art:'📖', name:'Dusty Tome',        desc:'Jacks score +50 bonus points each.' },
-  { key:'heart_of_gold',  tier:'common',     cost:5,  sell:2, art:'💛', name:'Heart of Gold',     desc:'Hearts score +20 bonus points each.' },
-  { key:'ace_in_hole',    tier:'common',     cost:5,  sell:2, art:'🕳️', name:'Ace in the Hole',   desc:'You start each round with one extra free discard.' },
-  { key:'club_house',     tier:'common',     cost:5,  sell:2, art:'♣️', name:'Club House',        desc:'Clubs score +20 bonus points each.' },
-  { key:'spade_work',     tier:'common',     cost:5,  sell:2, art:'♠️', name:'Spade Work',        desc:'Spades score +20 bonus points each.' },
-  { key:'diamond_eye',    tier:'common',     cost:5,  sell:2, art:'♦️', name:'Diamond Eye',       desc:'Diamonds score +20 bonus points each.' },
-  { key:'gamblers_chip',  tier:'common',     cost:5,  sell:2, art:'🎲', name:"Gambler's Chip",    desc:'Each round, one random card in your starting hand is always legal to play, regardless of the middle card.' },
-  { key:'tin_star',       tier:'common',     cost:5,  sell:2, art:'⭐', name:'Tin Star',          desc:'Queens score +50 bonus points each.' },
-  { key:'old_boots',      tier:'common',     cost:5,  sell:2, art:'👢', name:'Old Boots',         desc:'9s score 130 pts instead of 90.' },
-  { key:'pack_rat',       tier:'common',     cost:5,  sell:2, art:'🐀', name:'Pack Rat',          desc:'Start each round with 8 cards in hand instead of 7.' },
-  { key:'sturdy_shield',  tier:'common',     cost:5,  sell:2, art:'🛡️', name:'Sturdy Shield',     desc:'Once per round, prevent the 9 reshuffle power from triggering.' },
-  { key:'rabbit_foot',    tier:'common',     cost:5,  sell:2, art:'🐇', name:'Rabbit Foot',       desc:'When you draw the last card from the deck, draw one extra card.' },
-  { key:'tally_stick',    tier:'common',     cost:5,  sell:2, art:'📊', name:'Tally Stick',       desc:'Every 3rd hand you play in a round scores +100 flat bonus.' },
-  { key:'copper_ring',    tier:'common',     cost:5,  sell:2, art:'💍', name:'Copper Ring',       desc:'Same-number stacks of exactly 2 cards score +50 bonus.' },
-  { key:'magnifying_glass',tier:'common',    cost:5,  sell:2, art:'🔍', name:'Magnifying Glass',  desc:'You may look at the top card of the deck at any time.' },
-  { key:'worn_compass',   tier:'common',     cost:5,  sell:2, art:'🧭', name:'Worn Compass',      desc:'8s score +40 bonus points each.' },
-  { key:'canteen',        tier:'common',     cost:5,  sell:2, art:'🎒', name:'Full House',        desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
+  { key:'the_fool',       tier:'uncommon', art:'🃏', name:'The Fool',         desc:'Your first hand played each round scores ×2.' },
+  { key:'dead_mans_hand', tier:'common', art:'💀', name:"Dead Man's Hand",   desc:'Aces score 200 pts instead of 110.' },
+  { key:'seedling',       tier:'common', art:'🌱', name:'Seedling',          desc:'7s score +75 bonus points each.' },
+  { key:'daisy_chain',    tier:'common', art:'🔗', name:'Daisy Chain',       desc:'In any multi-card hand, each card after the first adds +25 flat bonus.' },
+  { key:'lucky_sevens',   tier:'common', art:'7️⃣', name:'Lucky Sevens',      desc:'7s score +100 bonus points.' },
+  { key:'iron_gut',       tier:'common', art:'🪙', name:'Iron Gut',          desc:'2s score double base points.' },
+  { key:'penny_pincher',  tier:'common', art:'💰', name:'Penny Pincher',     desc:'Each unused free discard at round end upgrades a random L0 card in your deck to L1.' },
+  { key:'swift_hand',     tier:'common', art:'⚡', name:'Swift Hand',        desc:'Gain +1 extra hand next round for every 3 unused hands this round (max +2).' },
+  { key:'dusty_tome',     tier:'common', art:'📖', name:'Dusty Tome',        desc:'Jacks score +50 bonus points each.' },
+  { key:'heart_of_gold',  tier:'common', art:'💛', name:'Heart of Gold',     desc:'Hearts score +20 bonus points each.' },
+  { key:'ace_in_hole',    tier:'common', art:'🕳️', name:'Ace in the Hole',   desc:'You start each round with one extra free discard.' },
+  { key:'trashman',       tier:'common', art:'🗑️', name:'Trashman',          desc:'+1 free discard per round. Can be purchased multiple times — each copy adds another +1.' },
+  { key:'club_house',     tier:'common', art:'♣️', name:'Club House',        desc:'Clubs score +20 bonus points each.' },
+  { key:'spade_work',     tier:'common', art:'♠️', name:'Spade Work',        desc:'Spades score +20 bonus points each.' },
+  { key:'diamond_eye',    tier:'common', art:'♦️', name:'Diamond Eye',       desc:'Diamonds score +20 bonus points each.' },
+  { key:'gamblers_chip',  tier:'common', art:'🎲', name:"Gambler's Chip",    desc:'Each round, one random card in your starting hand is always legal to play, regardless of the middle card.' },
+  { key:'tin_star',       tier:'common', art:'⭐', name:'Tin Star',          desc:'Queens score +50 bonus points each.' },
+  { key:'old_boots',      tier:'common', art:'👢', name:'Old Boots',         desc:'9s score 130 pts instead of 90.' },
+  { key:'pack_rat',       tier:'common', art:'🐀', name:'Pack Rat',          desc:'Start each round with 8 cards in hand instead of 7.' },
+  { key:'sturdy_shield',  tier:'common', art:'🛡️', name:'Sturdy Shield',     desc:'Once per round, prevent the 9 reshuffle power from triggering.' },
+  { key:'rabbit_foot',    tier:'common', art:'🐇', name:'Rabbit Foot',       desc:'When you draw the last card from the deck, draw one extra card.' },
+  { key:'tally_stick',    tier:'common', art:'📊', name:'Tally Stick',       desc:'Every 3rd hand you play in a round scores +100 flat bonus.' },
+  { key:'copper_ring',    tier:'common', art:'💍', name:'Copper Ring',       desc:'Same-number stacks of exactly 2 cards score +50 bonus.' },
+  { key:'magnifying_glass',tier:'common', art:'🔍', name:'Magnifying Glass',  desc:'You may look at the top card of the deck at any time.' },
+  { key:'worn_compass',   tier:'common', art:'🧭', name:'Worn Compass',      desc:'8s score +40 bonus points each.' },
+  { key:'canteen',        tier:'common', art:'🎒', name:'Full House',        desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
 
   // ── UNCOMMON ($8 / sell $4) ──────────────────────────────────
-  { key:'sniper',         tier:'uncommon',   cost:8,  sell:4, art:'🎯', name:'Sniper',            desc:'Single-card hands score ×3.' },
-  { key:'blood_pact',     tier:'uncommon',   cost:8,  sell:4, art:'🩸', name:'Blood Pact',        desc:'Queens multiply by ×3 instead of ×2, but cost 1 extra hand when played.' },
-  { key:'loadstone',      tier:'uncommon',   cost:8,  sell:4, art:'🧲', name:'Loadstone',         desc:'When you play a same-number stack of 3 or more, draw 3 cards.' },
-  { key:'the_tailor',     tier:'uncommon',   cost:8,  sell:4, art:'🎴', name:'The Tailor',        desc:'If all cards in a multi-card hand share the same suit, the hand scores ×1.5.' },
-  { key:'ward',           tier:'uncommon',   cost:8,  sell:4, art:'🪬', name:'Ward',              desc:'Once per round, if you would run out of hands, prevent it and draw 2 cards instead.' },
-  { key:'chain_reaction', tier:'uncommon',   cost:8,  sell:4, art:'💥', name:'Chain Reaction',    desc:'If you play n 2s together, draw 2ⁿ cards instead of 2n.' },
-  { key:'mirror_shard',   tier:'uncommon',   cost:8,  sell:4, art:'🪞', name:'Mirror Shard',      desc:'The first card you discard each round does not count against your free discard limit.' },
-  { key:'night_market',   tier:'uncommon',   cost:8,  sell:4, art:'🌙', name:'Night Market',      desc:'See 8 cards instead of 6 for Add, Remove, and Upgrade choices in the reward screen.' },
-  { key:'the_anvil',      tier:'uncommon',   cost:8,  sell:4, art:'⚒️', name:'The Anvil',         desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
-  { key:'foxs_gambit',    tier:'uncommon',   cost:8,  sell:4, art:'🦊', name:"Fox's Gambit",      desc:'Each Jack played draws 1 extra card.' },
+  { key:'sniper',         tier:'rare', art:'🎯', name:'Sniper',            desc:'Single-card hands score ×3.' },
+  { key:'blood_pact',     tier:'uncommon', art:'🩸', name:'Blood Pact',        desc:'Queens multiply by ×3 instead of ×2, but cost 1 extra hand when played.' },
+  { key:'loadstone',      tier:'uncommon', art:'🧲', name:'Loadstone',         desc:'When you play a same-number stack of 3 or more, draw 3 cards.' },
+  { key:'the_tailor',     tier:'uncommon', art:'🎴', name:'The Tailor',        desc:'If all cards in a multi-card hand share the same suit, the hand scores ×1.5.' },
+  { key:'ward',           tier:'uncommon', art:'🪬', name:'Ward',              desc:'Once per round, if you would run out of hands, prevent it and draw 2 cards instead.' },
+  { key:'chain_reaction', tier:'uncommon', art:'💥', name:'Chain Reaction',    desc:'If you play n 2s together, draw 2ⁿ cards instead of 2n.' },
+  { key:'mirror_shard',   tier:'uncommon', art:'🪞', name:'Mirror Shard',      desc:'The first card you discard each round does not count against your free discard limit.' },
+  { key:'night_market',   tier:'uncommon', art:'🌙', name:'Night Market',      desc:'See 8 cards instead of 6 for Add, Remove, and Upgrade choices in the reward screen.' },
+  { key:'the_anvil',      tier:'uncommon', art:'⚒️', name:'The Anvil',         desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
+  { key:'foxs_gambit',    tier:'uncommon', art:'🦊', name:"Fox's Gambit",      desc:'Each Jack played draws 1 extra card.' },
+  { key:'white_rab',      tier:'uncommon', art:'🐰', name:'White Rab',         desc:'Same-number cards in a hand multiply the score: 2 matching = ×2, 3 = ×3, and so on. Applies even within a larger multi-card play.' },
+  { key:'double_jump',    tier:'uncommon', art:'⏫', name:'Double Jump',        desc:'Your next upgrade reward jumps two levels instead of one (max L3). The relic is then destroyed and returns to the pool.' },
+  { key:'fuck_that',      tier:'uncommon', art:'🎲', name:'Fuck That',          desc:'3 charges. Re-roll any reward screen option (add/remove/upgrade/relic). Charges do not replenish. When all 3 are used, the relic is destroyed and returns to the pool.' },
 
   // ── RARE ($12 / sell $6) ─────────────────────────────────────
-  { key:'wildfire',       tier:'rare',       cost:12, sell:6, art:'🔥', name:'Wildfire',          desc:'In a suit dump or chain, every card after the 3rd scores double.' },
-  { key:'the_crown',      tier:'rare',       cost:12, sell:6, art:'👑', name:'The Crown',         desc:"If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%." },
-  { key:'eclipse',        tier:'rare',       cost:12, sell:6, art:'🌑', name:'Eclipse',           desc:'Once per round, when you draw from an empty deck, the discard pile is reshuffled back in.' },
-  { key:'crimson_tide',   tier:'rare',       cost:12, sell:6, art:'🌊', name:'Crimson Tide',      desc:'Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds).' },
-  { key:'the_vault',      tier:'rare',       cost:12, sell:6, art:'🏦', name:'The Vault',         desc:'Once per run, you may take 3 reward choices instead of 2 after a round clear.' },
+  { key:'wildfire',       tier:'rare', art:'🔥', name:'Wildfire',          desc:'In a suit dump or chain, every card after the 3rd scores double.' },
+  { key:'the_crown',      tier:'rare', art:'👑', name:'The Crown',         desc:"If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%." },
+  { key:'eclipse',        tier:'rare', art:'🌑', name:'Eclipse',           desc:'Once per round, when you draw from an empty deck, the discard pile is reshuffled back in.' },
+  { key:'crimson_tide',   tier:'rare', art:'🌊', name:'Crimson Tide',      desc:'Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds).' },
+  { key:'the_vault',      tier:'rare', art:'🏦', name:'The Vault',         desc:'Once per run, you may take 3 reward choices instead of 2 after a round clear.' },
+  { key:'logbook',        tier:'rare', art:'📒', name:"Can I See Your Logbook?", desc:"Choose one relic you already own — its effect is duplicated. Stackable relics like Trashman add another stack." },
 
   // ── LEGENDARY ($18 / sell $9) ────────────────────────────────
-  { key:'philosophers_stone', tier:'legendary', cost:18, sell:9, art:'🪨', name:"Philosopher's Stone", desc:'Every card you play scores at least 100 pts, regardless of base value.' },
-  { key:'ouroboros',      tier:'legendary',  cost:18, sell:9, art:'🐍', name:'Ouroboros',         desc:'Discarded cards are not lost — they return to your hand immediately instead of the discard pile.' },
+  { key:'philosophers_stone', tier:'legendary', art:'🪨', name:"Philosopher's Stone", desc:'Every card you play scores at least 100 pts, regardless of base value.' },
+  { key:'ouroboros',      tier:'legendary', art:'🐍', name:'Ouroboros',         desc:'Discarded cards are not lost — they return to your hand immediately instead of the discard pile.' },
+  { key:'the_void',       tier:'legendary', art:'🌌', name:'The Void',           desc:'Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.' },
+  // commons
+  { key:'top_hat',        tier:'common',    art:'🎩', name:'Top Hat',            desc:'Whenever you play a card that exactly matches the middle card\'s suit AND number, draw 1 card.' },
+  { key:'fever',          tier:'common',    art:'🌡️', name:'Fever',              desc:'Your first hand each round scores +50 flat bonus.' },
+  { key:'odd_fit',        tier:'common',    art:'🧩', name:'Odd Fit',            desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
+  // uncommon
+  { key:'do_where_labs_on', tier:'uncommon', art:'🗺️', name:'Do Where Labs On?', desc:'At the start of each round, play the first middle card yourself from your hand. You score no points for it.' },
+  // rares
+  { key:'colorblind',     tier:'rare',      art:'🎨', name:'Colorblind',         desc:'Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit.' },
+  { key:'on_yersel_hen',  tier:'rare',      art:'👑', name:'On Yersel Hen!',     desc:'Each hand you play scores +100 for every unplayed Queen currently held in your hand.' },
 ];
 
 // ══════════════════════════════════════════════════════════════ GAME STATE
@@ -1085,8 +1101,21 @@ function cardMatches(card, midN, midS, aceSuit) {
   const effSuit = aceSuit || midS;
   if (card.n === 'A') return true;
   // Suit Lock boss: only suit matches allowed, no number matches
-  if (G.activeBoss && G.activeBoss.key === 'suit_lock') return card.s === effSuit;
-  return card.n === midN || card.s === effSuit;
+  if (G.activeBoss && G.activeBoss.key === 'suit_lock') {
+    if (G.relics.includes('colorblind')) {
+      const grp = s => (s === '♠' || s === '♣') ? 'black' : 'red';
+      return grp(card.s) === grp(effSuit);
+    }
+    return card.s === effSuit;
+  }
+  if (card.n === midN) return true;
+  if (card.s === effSuit) return true;
+  // Colorblind: ♠/♣ same group, ♥/♦ same group
+  if (G.relics.includes('colorblind')) {
+    const grp = s => (s === '♠' || s === '♣') ? 'black' : 'red';
+    if (grp(card.s) === grp(effSuit)) return true;
+  }
+  return false;
 }
 
 function legalPlays() {
@@ -1115,7 +1144,8 @@ function maxHands() {
 function maxDiscs() {
   let d = ROUND_MAXDISCS[roundIdx()];
   if (G.activeBoss && G.activeBoss.key === 'one_shot') return G._oneShotMaxDiscs || 5;
-  return Math.max(0, d);
+  const trashmanCount = (G.relics || []).filter(k => k === 'trashman').length;
+  return Math.max(0, d + trashmanCount);
 }
 function handsLeft()  { return Math.max(0, maxHands() - G.handsUsed); }
 function freeDiscsLeft() { return Math.max(0, maxDiscs() - G.discUsed); }
@@ -1126,12 +1156,19 @@ const HAND_CAP = 18;
 function drawUp(n) {
   // Eclipse: if deck is empty, reshuffle discardPile back once per round
   function tryEclipse() {
-    if (G.deck.length === 0 && G.discardPile.length > 0 && G.relics.includes('eclipse') && !G.eclipseUsed) {
-      G.eclipseUsed = true;
-      G.deck = shuffle([...G.discardPile]);
-      G.discardPile = [];
-      log(`🌑 Eclipse! Discard pile reshuffled into deck (${G.deck.length} cards).`, 'gold');
-      pulseRelic('eclipse');
+    if (G.deck.length === 0 && G.discardPile.length > 0) {
+      if (G.relics.includes('the_void')) {
+        G.deck = shuffle([...G.discardPile]);
+        G.discardPile = [];
+        log(`🌌 The Void! Deck reshuffled from discard pile (${G.deck.length} cards).`, 'gold');
+        pulseRelic('the_void');
+      } else if (G.relics.includes('eclipse') && !G.eclipseUsed) {
+        G.eclipseUsed = true;
+        G.deck = shuffle([...G.discardPile]);
+        G.discardPile = [];
+        log(`🌑 Eclipse! Discard pile reshuffled into deck (${G.deck.length} cards).`, 'gold');
+        pulseRelic('eclipse');
+      }
     }
   }
   if (n !== undefined) {
@@ -1230,7 +1267,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.5.15 — Game Log`,
+    `DEAD MAN'S SWITCH v0.6.9 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1264,7 +1301,8 @@ function updateHUD() {
   const free = freeDiscsLeft();
   const discEl = document.getElementById('hud-discs');
   if (discEl) {
-    discEl.textContent = free > 0 ? free + ' free' : '0 (−1 hand)';
+    const debtCost = (G.activeBoss && G.activeBoss.key === 'double_debt') ? 2 : 1;
+    discEl.textContent = free > 0 ? free + ' free' : `0 (−${debtCost} hand${debtCost > 1 ? 's' : ''})`;
     discEl.style.color = free > 0 ? '' : 'var(--red)';
   }
   const pct = target() > 0 ? Math.min(100, G.score / target() * 100) : 0;
@@ -1439,7 +1477,8 @@ function renderActions() {
     if (free > 0) {
       hint.innerHTML = `Drop to<br>discard<br><span style="color:var(--gold);font-size:9px;">${free} free left</span>`;
     } else if (handsLeft() > 0) {
-      hint.innerHTML = `Drop to<br>discard<br><span style="color:var(--red);font-size:9px;">−1 hand</span>`;
+      const debtCost = (G.activeBoss && G.activeBoss.key === 'double_debt') ? 2 : 1;
+      hint.innerHTML = `Drop to<br>discard<br><span style="color:var(--red);font-size:9px;">−${debtCost} hand${debtCost > 1 ? 's' : ''}</span>`;
     } else {
       hint.innerHTML = `Discard<br>unavailable`;
     }
@@ -1540,7 +1579,38 @@ function calcPreviewScore(cards) {
     if (new Set(cards.map(c => c.n)).size === 1) raw += 50;
   }
 
+  // Fever: first hand +50
+  if (G.relics.includes('fever') && G.handsUsed === 0) raw += 50;
+
+  // Odd Fit: +40 per number-only match
+  if (G.relics.includes('odd_fit') && G.middle) {
+    const effSuit = G.aceSuit || G.middle.s;
+    raw += cards.filter(c => c.n === G.middle.n && c.s !== effSuit).length * 40;
+  }
+
+  // On Yersel Hen!: +100 per unplayed Queen in hand
+  if (G.relics.includes('on_yersel_hen')) {
+    const playedKeys = new Set(cards.map(c => c.n + c.s));
+    const unplayedQueens = G.hand.filter(c => c.n === 'Q' && !playedKeys.has(c.n + c.s)).length;
+    raw += unplayedQueens * 100;
+  }
+
   // Multipliers — applied after all additives
+  // Hand-size bonus multiplier
+  if (isMultiCard) {
+    const n = cards.length;
+    const handMult = n >= 10 ? 5 : n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1.5 : 1;
+    if (handMult > 1) raw = Math.round(raw * handMult);
+  }
+
+  // White Rab: largest same-number group multiplies score
+  if (G.relics.includes('white_rab') && isMultiCard) {
+    const numCounts = {};
+    for (const c of cards) numCounts[c.n] = (numCounts[c.n] || 0) + 1;
+    const maxGroup = Math.max(...Object.values(numCounts));
+    if (maxGroup >= 2) raw = Math.round(raw * maxGroup);
+  }
+
   // The Tailor: ×1.5 if all same suit
   if (isMultiCard && G.relics.includes('the_tailor')) {
     const suits = new Set(cards.map(c => c.s));
@@ -1617,6 +1687,7 @@ function startGame() {
     _rewardUsedActions: new Set(),
     _rewardSelectedIdx: null,
     _vaultUsed: false,
+    _fuckThatCharges: 0,
     fullLog: [],
   };
   assignBossRounds();
@@ -1906,6 +1977,14 @@ function startRound() {
   _displayScore = 0;
 
   // Opening middle card
+  if (G.relics.includes('do_where_labs_on')) {
+    // Draw hand first, then let player pick middle card from hand
+    G.hand = [];
+    drawUp();
+    applyBossEffects();
+    showMiddleCardPicker();
+    return; // rest of startRound continues in finishStartRound() after pick
+  }
   G.middle = G.deck.pop();
   G.pile = [G.middle];
   G.openSeven = G.middle.n === '7' ? G.middle.s : null;
@@ -1918,12 +1997,70 @@ function startRound() {
     drawUp();
   }
 
+  finishStartRound();
+}
+
+
+// ══════════════════════════════════════════════════════════════ DRAG & DROP
+
+function showMiddleCardPicker() {
+  showScreen('game-screen');
+  setRoundBackground(G.roundNum);
+  updateHUD();
+
+  // Overlay modal on top of game screen asking player to pick middle card
+  const existing = document.getElementById('middle-picker-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'middle-picker-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  `;
+  overlay.innerHTML = `
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:4px;">🗺️ Do Where Labs On?</div>
+    <div style="font-size:14px;color:var(--cream);margin-bottom:8px;text-align:center;max-width:320px;line-height:1.6;">
+      Choose a card from your hand to be the <b>opening middle card</b>.<br>
+      <span style="color:var(--dim);font-size:11px;">You will not score points for it.</span>
+    </div>
+    <div id="middle-picker-cards" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:500px;"></div>
+  `;
+  document.body.appendChild(overlay);
+
+  const container = document.getElementById('middle-picker-cards');
+  G.hand.forEach((c, i) => {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'cursor:pointer;transition:transform 0.15s;';
+    wrapper.innerHTML = cardHTML(c, '', '', false);
+    wrapper.onmouseenter = () => { wrapper.style.transform = 'translateY(-6px)'; };
+    wrapper.onmouseleave = () => { wrapper.style.transform = ''; };
+    wrapper.onclick = () => pickMiddleCard(i);
+    container.appendChild(wrapper);
+  });
+}
+
+function pickMiddleCard(handIdx) {
+  const overlay = document.getElementById('middle-picker-overlay');
+  if (overlay) overlay.remove();
+
+  const card = G.hand.splice(handIdx, 1)[0];
+  G.middle = card;
+  G.pile = [card];
+  G.openSeven = card.n === '7' ? card.s : null;
+  G.openSevenLevel = (card.n === '7') ? (card.level || 0) : 0;
+  log(`🗺️ Do Where Labs On? You set ${card.n}${card.s} as the opening middle card.`, 'gold');
+  if (G.openSeven) log(`⚡ OPEN 7! Middle is a 7${G.openSeven}. You may dump ${G.openSeven} cards.`, 'gold');
+  pulseRelic('do_where_labs_on');
+  finishStartRound();
+}
+
+function finishStartRound() {
   // Gambler's Chip: mark one random hand card as forced-legal
   if (G.relics.includes('gamblers_chip') && G.hand.length > 0) {
     const idx = Math.floor(Math.random() * G.hand.length);
     G.gamblerCardKey = G.hand[idx].n + G.hand[idx].s;
   }
-
   // Swift Hand: apply bonus hands from last round
   if (G.relics.includes('swift_hand') && G._pendingSwiftBonus) {
     G.handsUsed -= G._pendingSwiftBonus;
@@ -1931,24 +2068,20 @@ function startRound() {
     pulseRelic('swift_hand');
     G._pendingSwiftBonus = 0;
   }
-
-  // Clear the visual log for the new round, but preserve G.fullLog history
   const logEl = document.getElementById('log-el');
   logEl.innerHTML = '';
   if (G.roundNum > 1 && G.fullLog) G.fullLog.push('');
   log(`─── Round ${G.roundNum} · Target: ${target()} pts ───`, 'gold');
-  log(`Opening middle: ${G.middle.n}${G.middle.s}`, 'dim');
-  if (G.openSeven) log(`⚡ OPEN 7! Middle is a 7${G.openSeven}. You may dump ${G.openSeven} cards.`, 'gold');
-
+  if (!G.relics.includes('do_where_labs_on')) {
+    log(`Opening middle: ${G.middle.n}${G.middle.s}`, 'dim');
+    if (G.openSeven) log(`⚡ OPEN 7! Middle is a 7${G.openSeven}. You may dump ${G.openSeven} cards.`, 'gold');
+  }
   showScreen('game-screen');
   setRoundBackground(G.roundNum);
   updateHUD();
   renderMilestones();
   renderActions();
 }
-
-
-// ══════════════════════════════════════════════════════════════ DRAG & DROP
 
 function initDragDrop() {
   const zone = document.getElementById('play-zone');
@@ -2770,6 +2903,45 @@ function applyScore(cards, overrideTotal, opts = {}) {
     }
   }
 
+  // ── Relic: Fever — first hand each round scores +50
+  if (G.relics.includes('fever') && G.handsUsed === 0) {
+    raw += 50;
+    log(`🌡️ Fever! First hand +50`, 'gold');
+    pulseRelic('fever');
+  }
+
+  // ── Relic: Top Hat — exact match (suit AND number) draws 1 card
+  if (G.relics.includes('top_hat') && G.middle) {
+    const exactMatch = cards.filter(c => c.n === G.middle.n && c.s === G.middle.s).length;
+    if (exactMatch > 0) {
+      log(`🎩 Top Hat! Exact match — draw ${exactMatch} card${exactMatch > 1 ? 's' : ''}.`, 'gold');
+      pulseRelic('top_hat');
+      setTimeout(() => { drawUp(exactMatch); renderHand(); }, 400);
+    }
+  }
+
+  // ── Relic: Odd Fit — +40 per card that matched by number only (not suit)
+  if (G.relics.includes('odd_fit') && G.middle) {
+    const effSuit = G.aceSuit || G.middle.s;
+    const oddFitBonus = cards.filter(c => c.n === G.middle.n && c.s !== effSuit).length * 40;
+    if (oddFitBonus > 0) {
+      raw += oddFitBonus;
+      log(`🧩 Odd Fit! Number-only match${oddFitBonus > 40 ? 's' : ''} +${oddFitBonus}`, 'gold');
+      pulseRelic('odd_fit');
+    }
+  }
+
+  // ── Relic: On Yersel Hen! — +100 per unplayed Queen in hand
+  if (G.relics.includes('on_yersel_hen')) {
+    const playedKeys = new Set(cards.map(c => c.n + c.s));
+    const unplayedQueens = G.hand.filter(c => c.n === 'Q' && !playedKeys.has(c.n + c.s)).length;
+    if (unplayedQueens > 0) {
+      raw += unplayedQueens * 100;
+      log(`👑 On Yersel Hen! ${unplayedQueens} unplayed Queen${unplayedQueens > 1 ? 's' : ''} in hand +${unplayedQueens * 100}`, 'gold');
+      pulseRelic('on_yersel_hen');
+    }
+  }
+
   // ── Relic: The Anvil — +150 if played card matches middle's number
   if (G.relics.includes('the_anvil') && isSingleCard && cards[0].n === G.middle.n) {
     raw += 150;
@@ -2830,6 +3002,30 @@ function applyScore(cards, overrideTotal, opts = {}) {
   }
 
   // ── All additives are now in raw. Apply multipliers in sequence. ──
+
+  // ── Hand-size bonus multiplier (3=×1.5, 5=×2, 7=×3, 10=×5)
+  if (isMultiCard && !opts.suppressSniper) {
+    const n = cards.length;
+    const handMult = n >= 10 ? 5 : n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1.5 : 1;
+    if (handMult > 1) {
+      raw = Math.round(raw * handMult);
+      log(`🃏 ${n}-card hand! ×${handMult} bonus`, 'blue');
+      showHandSizeBanner(n, handMult);
+    }
+  }
+
+  // ── Relic: White Rab — largest same-number group multiplies score
+  if (G.relics.includes('white_rab') && isMultiCard) {
+    const numCounts = {};
+    for (const c of cards) numCounts[c.n] = (numCounts[c.n] || 0) + 1;
+    const maxGroup = Math.max(...Object.values(numCounts));
+    if (maxGroup >= 2) {
+      const groupNum = Object.keys(numCounts).find(n => numCounts[n] === maxGroup);
+      raw = Math.round(raw * maxGroup);
+      log(`🐰 White Rab! ${maxGroup}× ${groupNum}s — ×${maxGroup} score`, 'gold');
+      pulseRelic('white_rab');
+    }
+  }
 
   // ── Relic: The Tailor — ×1.5 if all cards same suit in a multi-card hand
   if (isMultiCard && G.relics.includes('the_tailor')) {
@@ -3757,7 +3953,7 @@ function rollAddLevel() {
   return 0;
 }
 
-function generateAddCards() {
+function generateAddCards(bossRound = false) {
   const count = G.relics.includes('night_market') ? 8 : 6;
   const cards = [];
   for (let i = 0; i < count; i++) {
@@ -3767,6 +3963,8 @@ function generateAddCards() {
     // Enforce minimum level (black kings start L1, red kings start L0)
     let minLv = ALWAYS_L1.has(n) ? 1 : 0;
     if (n === 'K') minLv = RED_SUITS.has(s) ? 0 : 1;
+    // After a boss round: no L0 cards — bump any L0 up to L1
+    if (bossRound) minLv = Math.max(minLv, 1);
     lv = Math.max(lv, minLv);
     // Cap at 3
     lv = Math.min(lv, 3);
@@ -3795,7 +3993,13 @@ function generateUpgradeCards() {
 }
 
 function generateRewardRelics() {
-  const available = ALL_RELICS.filter(r => !G.relics.includes(r.key));
+  // Trashman is always available — it stacks with duplicates
+  // Logbook only appears if player already owns at least one relic to copy
+  const canUseLogbook = G.relics.length > 0;
+  const available = ALL_RELICS.filter(r => {
+    if (r.key === 'logbook') return canUseLogbook && !G.relics.includes('logbook');
+    return !G.relics.includes(r.key) || r.key === 'trashman';
+  });
   const weights = { common: 1, uncommon: 0.25, rare: 0.067, legendary: 0.02 };
   const pool = available.map(r => ({ r, w: weights[r.tier] || 1 }));
   function weightedPick(pool) {
@@ -3867,14 +4071,16 @@ function renderRewardActions() {
   if (G.relics.length > 0) {
     ownedHtml = `<div class="owned-relics-section" style="margin-top:8px;">
       <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;">Your Relics</div>`;
-    for (const key of G.relics) {
+    for (const key of [...new Set(G.relics)]) {
       const r = ALL_RELICS.find(x => x.key === key);
       if (!r) continue;
       const tc = {common:'var(--dim)',uncommon:'#7ec8a0',rare:'#e8943a',legendary:'#d4af37'}[r.tier];
+      const stackCount = G.relics.filter(k => k === key).length;
+      const stackBadge = stackCount > 1 ? ` <span style="color:var(--gold);font-size:10px;">×${stackCount}</span>` : '';
       ownedHtml += `<div class="owned-relic-row">
         <div class="owned-relic-art">${r.art}</div>
         <div class="owned-relic-info">
-          <div class="owned-relic-name">${r.name} <span style="color:${tc};font-size:9px;">${r.tier}</span></div>
+          <div class="owned-relic-name">${r.name}${stackBadge} <span style="color:${tc};font-size:9px;">${r.tier}</span></div>
           <div class="owned-relic-desc">${r.desc}</div>
         </div>
       </div>`;
@@ -3909,13 +4115,33 @@ function renderRewardActions() {
   document.getElementById('reward-content').innerHTML = html;
 }
 
+function rerollBtn() {
+  if (!G.relics.includes('fuck_that') || G._fuckThatCharges <= 0) return '';
+  return `<button class="btn" onclick="rerollRewardChoice()" style="color:var(--green);border-color:var(--green);">🎲 Re-roll (${G._fuckThatCharges} left)</button>`;
+}
+
+function rerollRewardChoice() {
+  if (!G.relics.includes('fuck_that') || G._fuckThatCharges <= 0) return;
+  G._fuckThatCharges--;
+  log(`🎲 Fuck That! Re-rolled. ${G._fuckThatCharges} charge${G._fuckThatCharges !== 1 ? 's' : ''} remaining.`, 'gold');
+  // Consume relic when last charge is used
+  if (G._fuckThatCharges <= 0) {
+    const idx = G.relics.indexOf('fuck_that');
+    if (idx !== -1) G.relics.splice(idx, 1);
+    log('🎲 Fuck That exhausted — relic returned to pool.', 'dim');
+  }
+  // Re-run the current choice screen with fresh options
+  chooseRewardAction(G._pendingRewardAction);
+}
+
 function chooseRewardAction(actionId) {
   G._pendingRewardAction = actionId;
   let cards, relics;
   const tierColour = {common:'var(--dim)',uncommon:'#7ec8a0',rare:'#e8943a',legendary:'#d4af37'};
 
   if (actionId === 'add') {
-    cards = generateAddCards();
+    const wasBoss = isBossRound(G.roundNum);
+    cards = generateAddCards(wasBoss);
     const levelLabel = ['', '★ L1', '★★ L2', '★★★ L3'];
     let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Add a card to your deck</div>
       <div class="reward-cards-grid" id="reward-cards-grid">`;
@@ -3928,6 +4154,7 @@ function chooseRewardAction(actionId) {
     html += '</div>';
     html += `<div class="reward-confirm-row">
       <button class="btn" onclick="skipRewardChoice()" style="color:var(--dim);">Skip</button>
+      ${rerollBtn()}
       <button class="btn" id="reward-confirm-btn" onclick="rewardConfirmCard('add')" style="display:none;color:var(--gold);border-color:var(--gold);">Confirm ✓</button>
     </div>`;
     document.getElementById('reward-content').innerHTML = html;
@@ -3947,6 +4174,7 @@ function chooseRewardAction(actionId) {
     html += '</div>';
     html += `<div class="reward-confirm-row">
       <button class="btn" onclick="skipRewardChoice()" style="color:var(--dim);">Skip</button>
+      ${rerollBtn()}
       <button class="btn" id="reward-confirm-btn" onclick="rewardConfirmCard('subtract')" style="display:none;color:var(--gold);border-color:var(--gold);">Confirm ✓</button>
     </div>`;
     document.getElementById('reward-content').innerHTML = html;
@@ -3956,23 +4184,29 @@ function chooseRewardAction(actionId) {
   } else if (actionId === 'upgrade') {
     cards = generateUpgradeCards();
     if (cards.length === 0) { renderRewardActions(); return; }
+    const hasDoubleJump = G.relics.includes('double_jump');
+    const jumpSize = hasDoubleJump ? 2 : 1;
     const levelColour = ['var(--dim)', 'rgba(180,180,210,0.9)', 'var(--gold)'];
     const nextColours = ['rgba(180,180,210,0.9)', 'var(--gold)', 'rgba(100,160,240,1)'];
     const nextLabels  = ['★', '★★', '★★★'];
-    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Upgrade a card in your deck (→ next level)</div>
-      <div class="reward-cards-grid" id="reward-cards-grid">`;
+    const jumpNote = hasDoubleJump ? `<div style="font-size:9px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;">⏫ Double Jump active — +2 levels</div>` : '';
+    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;">Upgrade a card in your deck (→ next level)</div>
+      ${jumpNote}<div class="reward-cards-grid" id="reward-cards-grid">`;
     cards.forEach((c, i) => {
       const lv = c.level || 0;
-      const nextLv = Math.min(lv + 1, 3);
+      const nextLv = Math.min(lv + jumpSize, 3);
       const upgradePreview = { ...c, level: nextLv };
+      const wasLabel = lv === 0 ? 'base' : nextLabels[lv-1];
+      const toLabel = nextLabels[nextLv-1];
       html += `<div class="reward-card-opt" id="rcopt-${i}" onclick="rewardSelectCard(${i})">
         ${cardHTML(upgradePreview, '', '', false)}
-        <div class="card-label" style="color:${levelColour[lv]}">was ${lv === 0 ? 'base' : nextLabels[lv-1]} → <span style="color:${nextColours[lv]}">${nextLabels[lv]}</span></div>
+        <div class="card-label" style="color:${levelColour[lv] || 'var(--dim)'}">was ${wasLabel} → <span style="color:${nextColours[nextLv-1] || 'rgba(100,160,240,1)'}">${toLabel}</span></div>
       </div>`;
     });
     html += '</div>';
     html += `<div class="reward-confirm-row">
       <button class="btn" onclick="skipRewardChoice()" style="color:var(--dim);">Skip</button>
+      ${rerollBtn()}
       <button class="btn" id="reward-confirm-btn" onclick="rewardConfirmCard('upgrade')" style="display:none;color:var(--gold);border-color:var(--gold);">Confirm ✓</button>
     </div>`;
     document.getElementById('reward-content').innerHTML = html;
@@ -3994,7 +4228,7 @@ function chooseRewardAction(actionId) {
       </div>`;
     });
     html += '</div>';
-    html += `<button class="btn" onclick="skipRewardChoice()" style="margin-top:8px;color:var(--dim);">Skip this choice</button>`;
+    html += `<div style="display:flex;gap:8px;margin-top:8px;">${rerollBtn()}<button class="btn" onclick="skipRewardChoice()" style="color:var(--dim);">Skip</button></div>`;
     document.getElementById('reward-content').innerHTML = html;
   }
 }
@@ -4078,10 +4312,18 @@ function rewardConfirmCard(action) {
       log(`Removed ${card.n}${card.s} from deck.`, 'green');
     }
   } else if (action === 'upgrade') {
+    const hasDoubleJump = G.relics.includes('double_jump');
+    const jumpSize = hasDoubleJump ? 2 : 1;
     const di = G.deck.findIndex(c => c.n === card.n && c.s === card.s && (c.level||0) === (card.level||0));
     if (di !== -1) {
-      G.deck[di] = { ...G.deck[di], level: Math.min(3, (G.deck[di].level||0) + 1) };
-      log(`Upgraded ${card.n}${card.s} to L${G.deck[di].level}.`, 'green');
+      const newLevel = Math.min(3, (G.deck[di].level||0) + jumpSize);
+      G.deck[di] = { ...G.deck[di], level: newLevel };
+      log(`Upgraded ${card.n}${card.s} to L${G.deck[di].level}.${hasDoubleJump ? ' ⏫ Double Jump consumed.' : ''}`, 'green');
+    }
+    // Consume Double Jump — remove one copy from relics so it returns to the pool
+    if (hasDoubleJump) {
+      const rIdx = G.relics.indexOf('double_jump');
+      if (rIdx !== -1) G.relics.splice(rIdx, 1);
     }
   }
 
@@ -4095,9 +4337,55 @@ function rewardConfirmCard(action) {
 
 function rewardPickRelic(key) {
   const r = ALL_RELICS.find(x => x.key === key);
-  if (!r || G.relics.includes(key)) return;
+  if (!r || (G.relics.includes(key) && key !== 'trashman' && key !== 'logbook')) return;
+
+  // Logbook: don't add to relics — instead show a picker to duplicate an owned relic
+  if (key === 'logbook') {
+    showLogbookPicker();
+    return;
+  }
+
   G.relics.push(key);
-  log(`Gained relic: ${r.name}`, 'green');
+  // Fuck That: grant 3 charges (or +3 if somehow duplicated via logbook)
+  if (key === 'fuck_that') G._fuckThatCharges += 3;
+  const trashCount = G.relics.filter(k => k === 'trashman').length;
+  const suffix = key === 'trashman' && trashCount > 1 ? ` (×${trashCount} — +${trashCount} discards/round)` : '';
+  log(`Gained relic: ${r.name}${suffix}`, 'green');
+  G._rewardUsedActions.add('relic');
+  G._rewardChoicesDone++;
+  renderRewardTokens();
+  renderRewardActions();
+}
+
+function showLogbookPicker() {
+  const owned = [...new Set(G.relics)];
+  const tierColour = {common:'var(--dim)',uncommon:'#7ec8a0',rare:'#e8943a',legendary:'#d4af37'};
+  let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">📒 Choose a relic to duplicate</div>
+    <div class="reward-relics-grid">`;
+  for (const k of owned) {
+    const rel = ALL_RELICS.find(x => x.key === k);
+    if (!rel) continue;
+    const count = G.relics.filter(x => x === k).length;
+    const stackNote = count > 1 ? ` <span style="color:var(--gold);font-size:9px;">×${count} owned</span>` : '';
+    html += `<div class="reward-relic-opt" onclick="logbookDuplicate('${k}')">
+      <div class="reward-relic-art">${rel.art}</div>
+      <div class="reward-relic-info">
+        <div class="reward-relic-name">${rel.name}${stackNote}</div>
+        <div class="reward-relic-tier" style="color:${tierColour[rel.tier]}">${rel.tier}</div>
+        <div class="reward-relic-desc">${rel.desc}</div>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+  document.getElementById('reward-content').innerHTML = html;
+}
+
+function logbookDuplicate(key) {
+  const r = ALL_RELICS.find(x => x.key === key);
+  if (!r) return;
+  G.relics.push(key);
+  const count = G.relics.filter(k => k === key).length;
+  log(`📒 Logbook! Duplicated: ${r.name} (now ×${count})`, 'green');
   G._rewardUsedActions.add('relic');
   G._rewardChoicesDone++;
   renderRewardTokens();
@@ -4608,6 +4896,37 @@ const POWER_FLASH_COLOURS = {
   'K_black': 'rgba(50,50,200,0.15)',
   'A':  'rgba(201,168,76,0.20)',
 };
+// ══════════════════════════════════════════════════════════════ HAND-SIZE FANFARE
+let _comboBannerTimer = null;
+function showHandSizeBanner(cardCount, mult) {
+  const labels = { 3:'3-CARD RUN', 5:'5-CARD RUN', 7:'7-CARD RUN', 10:'10-CARD RUN' };
+  // Pick the highest threshold reached
+  const threshold = cardCount >= 10 ? 10 : cardCount >= 7 ? 7 : cardCount >= 5 ? 5 : 3;
+  const label = labels[threshold] || `${cardCount}-CARD HAND`;
+
+  const banner  = document.getElementById('combo-banner');
+  const main    = document.getElementById('combo-main');
+  const sub     = document.getElementById('combo-sub');
+  if (!banner) return;
+
+  main.textContent = label;
+  sub.textContent  = `×${mult} MULTIPLIER`;
+
+  // Colour the border/glow based on mult tier
+  const colours = { 1.5:'var(--blue)', 2:'var(--green)', 3:'var(--gold)', 5:'var(--red)' };
+  const col = colours[mult] || 'var(--gold)';
+  banner.style.borderColor = col;
+  banner.style.color = col;
+  banner.style.textShadow = `0 0 24px ${col}`;
+  const glows = { 1.5:'rgba(74,122,170,0.3)', 2:'rgba(58,138,90,0.3)', 3:'rgba(201,168,76,0.3)', 5:'rgba(204,51,51,0.3)' };
+  banner.style.boxShadow = `0 0 40px ${glows[mult] || 'rgba(201,168,76,0.3)'}` ;
+
+  // Show → auto-hide
+  if (_comboBannerTimer) clearTimeout(_comboBannerTimer);
+  banner.classList.add('show');
+  _comboBannerTimer = setTimeout(() => { banner.classList.remove('show'); }, 1400);
+}
+
 function doPowerFlash(card) {
   const key = card.n === 'K' ? (isRed(card) ? 'K_red' : 'K_black') : card.n;
   const colour = POWER_FLASH_COLOURS[key];
