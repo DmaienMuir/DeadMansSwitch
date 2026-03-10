@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.6.9</title>
+<title>Dead Man's Switch v0.6.14</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.9</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.14</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.9</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.14</div>
     </div>
   </div>
 
@@ -1001,8 +1001,8 @@ const LEVEL_CLASS = ['','card-l1','card-l2','card-l3'];
 const ROUND_TARGETS = [0,  300,  420,  560,  800,  1000, 1250, 1550, 2000,
 //                    9     10    11    12⚡   13    14    15    16⚡
                        2450, 2950, 3500, 4300, 5100, 6000, 7100, 8500,
-//                    17     18     19     20⚡    21     22     23     24⚡
-                       10000, 11800, 13800, 16500, 19500, 23000, 27000, 32000];
+//                    17     18⚡    19     20     21⚡    22     23     24⚡
+                       9500, 11000, 12500, 14500, 17000, 19500, 22000, 25000];
 
 const ROUND_MAXHANDS = new Array(25).fill(8);  // flat 8 throughout
 const ROUND_MAXDISCS = new Array(25).fill(4);  // flat 4 throughout
@@ -1028,7 +1028,6 @@ const ALL_RELICS = [
   { key:'tin_star',       tier:'common', art:'⭐', name:'Tin Star',          desc:'Queens score +50 bonus points each.' },
   { key:'old_boots',      tier:'common', art:'👢', name:'Old Boots',         desc:'9s score 130 pts instead of 90.' },
   { key:'pack_rat',       tier:'common', art:'🐀', name:'Pack Rat',          desc:'Start each round with 8 cards in hand instead of 7.' },
-  { key:'sturdy_shield',  tier:'common', art:'🛡️', name:'Sturdy Shield',     desc:'Once per round, prevent the 9 reshuffle power from triggering.' },
   { key:'rabbit_foot',    tier:'common', art:'🐇', name:'Rabbit Foot',       desc:'When you draw the last card from the deck, draw one extra card.' },
   { key:'tally_stick',    tier:'common', art:'📊', name:'Tally Stick',       desc:'Every 3rd hand you play in a round scores +100 flat bonus.' },
   { key:'copper_ring',    tier:'common', art:'💍', name:'Copper Ring',       desc:'Same-number stacks of exactly 2 cards score +50 bonus.' },
@@ -1042,7 +1041,7 @@ const ALL_RELICS = [
   { key:'loadstone',      tier:'uncommon', art:'🧲', name:'Loadstone',         desc:'When you play a same-number stack of 3 or more, draw 3 cards.' },
   { key:'the_tailor',     tier:'uncommon', art:'🎴', name:'The Tailor',        desc:'If all cards in a multi-card hand share the same suit, the hand scores ×1.5.' },
   { key:'ward',           tier:'uncommon', art:'🪬', name:'Ward',              desc:'Once per round, if you would run out of hands, prevent it and draw 2 cards instead.' },
-  { key:'chain_reaction', tier:'uncommon', art:'💥', name:'Chain Reaction',    desc:'If you play n 2s together, draw 2ⁿ cards instead of 2n.' },
+  { key:'chain_reaction', tier:'uncommon', art:'💥', name:'Chain Reaction',    desc:'Playing multiple 2s together multiplies their draw values instead of adding them. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn.' },
   { key:'mirror_shard',   tier:'uncommon', art:'🪞', name:'Mirror Shard',      desc:'The first card you discard each round does not count against your free discard limit.' },
   { key:'night_market',   tier:'uncommon', art:'🌙', name:'Night Market',      desc:'See 8 cards instead of 6 for Add, Remove, and Upgrade choices in the reward screen.' },
   { key:'the_anvil',      tier:'uncommon', art:'⚒️', name:'The Anvil',         desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
@@ -1064,7 +1063,7 @@ const ALL_RELICS = [
   { key:'ouroboros',      tier:'legendary', art:'🐍', name:'Ouroboros',         desc:'Discarded cards are not lost — they return to your hand immediately instead of the discard pile.' },
   { key:'the_void',       tier:'legendary', art:'🌌', name:'The Void',           desc:'Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.' },
   // commons
-  { key:'top_hat',        tier:'common',    art:'🎩', name:'Top Hat',            desc:'Whenever you play a card that exactly matches the middle card\'s suit AND number, draw 1 card.' },
+  { key:'top_hat',        tier:'common',    art:'🎩', name:'Top Hat',            desc:'Whenever you play a card that matches the middle card\'s number, draw 1 card.' },
   { key:'fever',          tier:'common',    art:'🌡️', name:'Fever',              desc:'Your first hand each round scores +50 flat bonus.' },
   { key:'odd_fit',        tier:'common',    art:'🧩', name:'Odd Fit',            desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
   // uncommon
@@ -1150,7 +1149,7 @@ function maxDiscs() {
 function handsLeft()  { return Math.max(0, maxHands() - G.handsUsed); }
 function freeDiscsLeft() { return Math.max(0, maxDiscs() - G.discUsed); }
 
-const HAND_CAP = 18;
+const HAND_CAP = 22;
 
 // Draw cards up to cap. If n given: power draw (still capped at 14).
 function drawUp(n) {
@@ -1181,7 +1180,7 @@ function drawUp(n) {
     }
     return drawn;
   } else {
-    // Top-up to 7 (pack_rat: 8), hard cap 14
+    // Top-up to 7 (pack_rat: 8), hard cap 22
     tryEclipse();
     const softCap = Math.min(G.relics.includes('pack_rat') ? 8 : 7, HAND_CAP);
     const limit = Math.max(0, softCap - G.hand.length);
@@ -1267,7 +1266,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.6.9 — Game Log`,
+    `DEAD MAN'S SWITCH v0.6.14 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1767,7 +1766,7 @@ const ALL_BOSSES = [
     name: 'The Marksman',
     art: '🎯',
     tagline: 'One chance. Make it count.',
-    rule: 'You are dealt 26 cards and must beat the target in a single hand. You have 5 free discards to sculpt your hand.',
+    rule: 'You are dealt 26 cards and must beat the target in a single hand. You have 5 free discards.',
     note: 'No further hands after your first play.',
     targetMult: 0.55,
   },
@@ -2587,6 +2586,9 @@ function fireLastCardPower(last, ordered, cont) {
   if ((last.level || 0) >= 1 && last.n !== '7') {
     const twos = ordered.filter(c => c.n === '2').length;
     log(`Final card ${last.n}${last.s} fires power!`, 'blue');
+    if (last.n === '2' && twos > 1) {
+      G._chainReactionFactors = ordered.filter(c => c.n === '2').map(c => { const lv = c.level || 0; return lv === 0 ? 1 : lv === 1 ? 2 : lv === 2 ? 4 : 6; });
+    }
     firePower(last, last.n === '2' ? twos : 1, cont);
     return; // cont called inside firePower (sync or async)
   }
@@ -2676,9 +2678,10 @@ function executeSameNumberFromStaged(cards) {
     const _di2 = G.hand.length;
     // Each 2 draws based on its own level
     if (G.relics.includes('chain_reaction') && cards.length > 1) {
-      const amount = Math.pow(2, cards.length);
+      const factors = cards.map(c => { const lv = c.level || 0; return lv === 0 ? 1 : lv === 1 ? 2 : lv === 2 ? 4 : 6; });
+      const amount = factors.reduce((a, b) => a * b, 1);
       const drawn = drawUp(amount);
-      log(`💥 Chain Reaction! ${cards.length} Twos → drew ${drawn} cards!`, 'gold');
+      log(`💥 Chain Reaction! ${cards.map((c,i)=>`L${c.level||0}(×${factors[i]})`).join(' × ')} = draw ${amount} → drew ${drawn}!`, 'gold');
       pulseRelic('chain_reaction');
     } else {
       let totalDraw = 0;
@@ -2910,13 +2913,13 @@ function applyScore(cards, overrideTotal, opts = {}) {
     pulseRelic('fever');
   }
 
-  // ── Relic: Top Hat — exact match (suit AND number) draws 1 card
+  // ── Relic: Top Hat — number match draws 1 card per matching card
   if (G.relics.includes('top_hat') && G.middle) {
-    const exactMatch = cards.filter(c => c.n === G.middle.n && c.s === G.middle.s).length;
-    if (exactMatch > 0) {
-      log(`🎩 Top Hat! Exact match — draw ${exactMatch} card${exactMatch > 1 ? 's' : ''}.`, 'gold');
+    const numMatch = cards.filter(c => c.n === G.middle.n).length;
+    if (numMatch > 0) {
+      log(`🎩 Top Hat! Number match — draw ${numMatch} card${numMatch > 1 ? 's' : ''}.`, 'gold');
       pulseRelic('top_hat');
-      setTimeout(() => { drawUp(exactMatch); renderHand(); }, 400);
+      setTimeout(() => { drawUp(numMatch); renderHand(); }, 400);
     }
   }
 
@@ -3128,8 +3131,10 @@ function firePower(card, twosCount, cont) {
     const perCard = lv === 1 ? 2 : lv === 2 ? 4 : 6;
     let amount;
     if (G.relics.includes('chain_reaction') && twosCount > 1) {
-      amount = Math.pow(2, twosCount);
-      log(`💥 Chain Reaction! ${twosCount} Twos → draw ${amount} cards!`, 'gold');
+      const factors = G._chainReactionFactors || Array(twosCount).fill(2);
+      G._chainReactionFactors = null;
+      amount = factors.reduce((a, b) => a * b, 1);
+      log(`💥 Chain Reaction! ${factors.map((f,i)=>`×${f}`).join(' × ')} = draw ${amount} cards!`, 'gold');
       pulseRelic('chain_reaction');
     } else {
       amount = perCard;
@@ -3233,12 +3238,6 @@ function firePower(card, twosCount, cont) {
 
   // ── 9 (Reshuffle hand, draw fresh) ───────────────────────────
   } else if (n === '9') {
-    if (G.relics.includes('sturdy_shield') && !G.shieldUsed) {
-      G.shieldUsed = true;
-      log('🛡️ Sturdy Shield! 9 reshuffle blocked.', 'gold');
-      pulseRelic('sturdy_shield');
-      done(); return;
-    }
     const drawCount = lv >= 2 ? 9 : 7;
     const peekAfter = lv >= 3;
     log(`9 L${lv}! Reshuffling hand into deck, drawing ${drawCount}...`, 'blue');
@@ -3723,11 +3722,9 @@ function discardCard(i) {
       log(`Discarded ${card.n}${card.s}. Free discards left: ${freeDiscsLeft()}`, 'dim');
     }
     const _diDisc = G.hand.length;
-    // One Shot: discards are sculpting — no replacement draw
-    if (!G.activeBoss || G.activeBoss.key !== 'one_shot') {
-      if (G.deck.length > 0 && G.hand.length < HAND_CAP) {
-        G.hand.push(G.deck.pop());
-      }
+    // Always draw 1 replacement card on discard
+    if (G.deck.length > 0) {
+      G.hand.push(G.deck.pop());
     }
     updateHUD(); renderActions();
     animateDealIn(_diDisc);
