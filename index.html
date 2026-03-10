@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.6.14</title>
+<title>Dead Man's Switch v0.6.15</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.14</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.15</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.14</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.15</div>
     </div>
   </div>
 
@@ -1266,7 +1266,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.6.14 — Game Log`,
+    `DEAD MAN'S SWITCH v0.6.15 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2104,6 +2104,7 @@ function initDragDrop() {
   });
 
   discZone.addEventListener('dragover', e => {
+    if (G.staged.length > 0) return; // can't discard while staging
     const canDiscard = freeDiscsLeft() > 0 || handsLeft() > 0;
     if (!canDiscard) return;
     e.preventDefault();
@@ -2115,6 +2116,7 @@ function initDragDrop() {
   discZone.addEventListener('drop', e => {
     e.preventDefault();
     discZone.classList.remove('drag-over');
+    if (G.staged.length > 0) return; // can't discard while staging
     const canDiscard = freeDiscsLeft() > 0 || handsLeft() > 0;
     if (!canDiscard) return;
     const idx = parseInt(e.dataTransfer.getData('text/plain'));
@@ -2183,7 +2185,7 @@ function initDragDrop() {
       if (t.clientX >= playRect.left && t.clientX <= playRect.right &&
           t.clientY >= playRect.top  && t.clientY <= playRect.bottom) {
         if (stageableIndices().includes(touchIdx)) stageCard(touchIdx);
-      } else if ((freeDiscsLeft() > 0 || handsLeft() > 0) &&
+      } else if (G.staged.length === 0 && (freeDiscsLeft() > 0 || handsLeft() > 0) &&
           t.clientX >= discRect.left && t.clientX <= discRect.right &&
           t.clientY >= discRect.top  && t.clientY <= discRect.bottom) {
         confirmDiscard(touchIdx);
@@ -2812,12 +2814,13 @@ function doPlaySingle(card) {
   G.aceSuit = null;
   G.openSeven = null;
   G.pile.push(G.middle);
+  const prevMiddleN = G.middle.n; // capture BEFORE overwriting, for Top Hat
   G.middle = card;
   G.discardPile.push(card);
 
   // Score
   let sc = BASE_SCORES[card.n];
-  applyScore([card], sc);
+  applyScore([card], sc, { prevMiddleN });
 
   const isJack = card.n === 'J';
   const isEight = card.n === '8';
@@ -2913,13 +2916,14 @@ function applyScore(cards, overrideTotal, opts = {}) {
     pulseRelic('fever');
   }
 
-  // ── Relic: Top Hat — number match draws 1 card per matching card
+  // ── Relic: Top Hat — number match against the middle card BEFORE this play
   if (G.relics.includes('top_hat') && G.middle) {
-    const numMatch = cards.filter(c => c.n === G.middle.n).length;
+    const midN = opts.prevMiddleN !== undefined ? opts.prevMiddleN : G.middle.n;
+    const numMatch = cards.filter(c => c.n === midN).length;
     if (numMatch > 0) {
       log(`🎩 Top Hat! Number match — draw ${numMatch} card${numMatch > 1 ? 's' : ''}.`, 'gold');
       pulseRelic('top_hat');
-      setTimeout(() => { drawUp(numMatch); renderHand(); }, 400);
+      setTimeout(() => { drawUp(numMatch); updateHUD(); renderActions(); }, 400);
     }
   }
 
@@ -3668,6 +3672,7 @@ function executeSameNumber(num) {
 
 // ══════════════════════════════════════════════════════════════ DISCARD / EMERGENCY
 function confirmDiscard(idx) {
+  if (G.staged.length > 0) return; // never discard while cards are staged
   discardCard(idx);
 }
 
