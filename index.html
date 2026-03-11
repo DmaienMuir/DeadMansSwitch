@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.8</title>
+<title>Dead Man's Switch v0.7.9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.8</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.9</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.8</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.9</div>
     </div>
   </div>
 
@@ -1281,7 +1281,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.8 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.9 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2689,7 +2689,7 @@ function commitAce(declaredSuit) {
   const card = G._pendingAce;
   G._pendingAce = null;
   G.staged = [];
-  playAce(card.s, declaredSuit);
+  playAce(card.s, declaredSuit, card); // pass full card to preserve level
 }
 
 function executeDumpFromStaged(ordered) {
@@ -2948,13 +2948,15 @@ function executeChainFromStaged(ordered) {
     const finish = () => { drawUp(); updateHUD(); renderActions(); animateDealIn(_diChain); checkRoundEnd(); };
     // If an Ace was part of the chain, ask for suit declaration after scoring
     if (aceInChain && !wasDump && G.score < target()) {
+      // Store the Ace card reference so fireAceChainDraw can read its level
+      G._aceChainCard = ordered.find(c => c.n === 'A') || null;
       showModal(`<h2 style="color:var(--gold)">Ace — Declare Suit</h2>
         <p style="color:var(--dim);margin-bottom:4px">Choose the active suit for the next card.</p>
         <div class="modal-opts">
           ${SUITS.map(s => {
             const names = {'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'};
             const col = RED_SUITS.has(s) ? 'style="color:#cc2222"' : '';
-            return `<div class="modal-opt" ${col} onclick="closeModal();G.aceSuit='${s}';log('Declared suit: ${s}','gold');finish_aceChain();">${s} ${names[s]}</div>`;
+            return `<div class="modal-opt" ${col} onclick="closeModal();G.aceSuit='${s}';log('Declared suit: ${s}','gold');fireAceChainDraw();finish_aceChain();">${s} ${names[s]}</div>`;
           }).join('')}
         </div>`);
       G._aceChainFinish = finish;
@@ -2962,6 +2964,20 @@ function executeChainFromStaged(ordered) {
       finish();
     }
   });
+}
+
+function fireAceChainDraw() {
+  // Draw for L2/L3 Ace when it appears mid-chain (not the last card)
+  // G.middle is the last card of the chain, not the Ace — use G._aceChainCard
+  if (G._aceChainCard) {
+    const aceLv = effectiveLevel(G._aceChainCard);
+    if (aceLv >= 2) {
+      const extraDraw = aceLv >= 3 ? 2 : 1;
+      const drawn = drawUp(extraDraw);
+      if (drawn > 0) log(`Ace L${aceLv}! Drew ${drawn} extra card${drawn !== 1 ? 's' : ''}. Hand: ${G.hand.length}`, 'blue');
+    }
+    G._aceChainCard = null;
+  }
 }
 
 function finish_aceChain() {
@@ -3124,13 +3140,14 @@ function executeSameNumberFromStaged(cards) {
   updateHUD(); renderActions();
   checkRoundEnd();
 }
-function playAce(srcSuit, declaredSuit) {
+function playAce(srcSuit, declaredSuit, srcCard) {
   closeModal();
-  const card = {n:'A', s:srcSuit};
-  // Remove from hand
-  const idx = G.hand.findIndex(c => cardKey(c) === cardKey(card));
-  if (idx === -1) return;
-  G.hand.splice(idx, 1);
+  // Use the full source card if provided (preserves level), otherwise find in hand
+  const bareCard = {n:'A', s:srcSuit};
+  const idx = G.hand.findIndex(c => cardKey(c) === cardKey(bareCard));
+  if (idx === -1 && !srcCard) return;
+  const card = srcCard || G.hand[idx] || bareCard;
+  if (idx !== -1) G.hand.splice(idx, 1);
 
   G.pile.push(G.middle);
   G.middle = card;
