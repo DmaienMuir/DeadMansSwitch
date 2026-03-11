@@ -75,7 +75,7 @@ Cards have levels L0–L3. L0 cards have no power. Cards gain power at L1 and im
 - L1 from the start: A, 2, 7, 8, J, black Kings (♠♣)
 - L0 from the start: 3, 4, 5, 6, 9, 10, Q, red Kings (♥♦)
 
-Cards marked **STACKABLE** fire their power once per copy in a same-number stack or a trailing stack at the end of a dump or chain.
+Cards marked **STACKABLE** (★) fire their power once per copy in a same-number stack or a trailing stack at the end of a dump or chain.
 
 | Card | L1 | L2 | L3 | Notes |
 |------|----|----|-----|-------|
