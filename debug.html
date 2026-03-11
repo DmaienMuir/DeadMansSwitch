@@ -903,8 +903,10 @@ body {
   <button onclick="dbgOpenRelicPicker()">＋ Add Relic</button>
   <button onclick="dbgSkipToRound()">⏭ Set Round</button>
   <button onclick="dbgFillHands()">♾ Max Hands</button>
+  <button onclick="dbgFillDiscards()">♾ Max Discards</button>
   <span class="dbg-sep">|</span>
-  <span id="dbg-status" style="color:#6a6058;font-size:10px;"></span>
+  <span id="dbg-lucky3" style="color:#c9a84c;font-size:10px;margin-left:4px;"></span>
+  <span id="dbg-status" style="color:#6a6058;font-size:10px;margin-left:8px;"></span>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ DEBUG MODAL -->
@@ -1468,6 +1470,7 @@ function updateHUD() {
   }).join('');
 
   renderPlayZone();
+  dbgUpdateLucky3();
 }
 
 function renderPileStack() {
@@ -5780,6 +5783,20 @@ function dbgFillHands() {
   G.handsUsed = 0;
   updateHUD(); renderActions();
   dbgStatus('Hands reset to maximum');
+}
+
+function dbgFillDiscards() {
+  if (!G) { dbgStatus('No active game state'); return; }
+  G.discUsed = 0;
+  updateHUD(); renderActions();
+  dbgStatus('Discards reset to maximum');
+}
+
+function dbgUpdateLucky3() {
+  const el = document.getElementById('dbg-lucky3');
+  if (!el) return;
+  const pct = (G && G._freeRelicChance) || 0;
+  el.textContent = pct > 0 ? `🃏 Lucky 3: ${pct}%` : '';
 }
 
 </script>
