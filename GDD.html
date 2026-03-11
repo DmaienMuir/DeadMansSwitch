@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead Man's Switch — GDD v0.6.60</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=IBM+Plex+Mono:wght@300;400;500&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --surface2: #1c1c21;
+    --border: #2a2a32;
+    --border-bright: #3d3d4a;
+    --text: #e8e4dc;
+    --dim: #7a7570;
+    --gold: #c9a84c;
+    --gold-dim: #7a6330;
+    --red: #c94c4c;
+    --blue: #4c7ec9;
+    --green: #4caa6e;
+    --purple: #8b5cf6;
+    --accent: #c9a84c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Pro', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  /* ── Noise overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ── Layout ── */
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px 120px;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 80px 40px 60px;
+    text-align: center;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 64px;
+  }
+
+  .hero-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(52px, 8vw, 96px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .hero h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 0.15em;
+    margin-top: 20px;
+  }
+
+  .hero-suits {
+    font-size: 28px;
+    margin: 28px 0 0;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+  }
+
+  /* ── Nav ── */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    margin-bottom: 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 48px;
+  }
+
+  .toc-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    grid-column: 1 / -1;
+  }
+
+  .toc a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    text-decoration: none;
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    display: flex;
+    gap: 12px;
+  }
+
+  .toc a:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+  .toc-num {
+    color: var(--border-bright);
+    min-width: 24px;
+  }
+
+  /* ── Sections ── */
+  section {
+    margin-bottom: 72px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 24px;
+    line-height: 1.1;
+  }
+
+  h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--gold);
+    margin: 32px 0 12px;
+  }
+
+  h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+    margin: 24px 0 8px;
+  }
+
+  p { margin-bottom: 14px; color: #c8c4bc; }
+
+  /* ── Tables ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--gold);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: #c8c4bc;
+    font-size: 12.5px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: rgba(201, 168, 76, 0.03); }
+
+  td.mono { font-family: 'IBM Plex Mono', monospace; }
+  td.gold { color: var(--gold); }
+  td.dim { color: var(--dim); }
+  td.red { color: var(--red); }
+  td.green { color: var(--green); }
+  td.blue { color: var(--blue); }
+  td.purple { color: var(--purple); }
+
+  /* ── Cards / Blocks ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+  }
+
+  .info-card .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+
+  .info-card .value {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .info-card .note {
+    font-size: 13px;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 2px solid var(--gold);
+    padding: 14px 20px;
+    margin: 20px 0;
+    background: rgba(201, 168, 76, 0.04);
+  }
+
+  .callout.red { border-color: var(--red); background: rgba(201, 76, 76, 0.04); }
+  .callout.blue { border-color: var(--blue); background: rgba(76, 126, 201, 0.04); }
+  .callout.green { border-color: var(--green); background: rgba(76, 170, 110, 0.04); }
+
+  .callout p { margin: 0; font-size: 15px; }
+  .callout strong { color: var(--text); }
+
+  /* ── Code ── */
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    color: var(--gold);
+  }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #c8c4bc;
+  }
+
+  /* ── Relic tiers ── */
+  .relic-common { color: #a0a0aa; }
+  .relic-uncommon { color: #4caa6e; }
+  .relic-rare { color: #4c7ec9; }
+  .relic-legendary { color: #c9a84c; }
+
+  .tier-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid;
+    display: inline-block;
+  }
+
+  .tier-badge.common { color: #a0a0aa; border-color: #3a3a44; }
+  .tier-badge.uncommon { color: var(--green); border-color: #2a5a3e; }
+  .tier-badge.rare { color: var(--blue); border-color: #2a3e5a; }
+  .tier-badge.legendary { color: var(--gold); border-color: var(--gold-dim); }
+
+  /* ── Level badges ── */
+  .lv {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    letter-spacing: 0.06em;
+    border: 1px solid;
+    display: inline-block;
+    margin-right: 4px;
+  }
+  .lv0 { color: #aaa; border-color: #444; }
+  .lv1 { color: #bbb; border-color: #888; }
+  .lv2 { color: var(--gold); border-color: var(--gold-dim); }
+  .lv3 { color: var(--blue); border-color: #2a4a7a; }
+
+  /* ── Boss cards ── */
+  .boss-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .boss-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 18px;
+  }
+
+  .boss-card .boss-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--red);
+    margin-bottom: 4px;
+  }
+
+  .boss-card .boss-key {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    margin-bottom: 8px;
+  }
+
+  .boss-card .boss-effect {
+    font-size: 14px;
+    color: #c8c4bc;
+    line-height: 1.5;
+  }
+
+  .boss-card .boss-mult {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    margin-top: 8px;
+  }
+
+  /* ── Scoring order list ── */
+  .score-order {
+    counter-reset: score-step;
+    list-style: none;
+    margin: 16px 0;
+  }
+
+  .score-order li {
+    counter-increment: score-step;
+    display: flex;
+    gap: 14px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: #c8c4bc;
+    align-items: baseline;
+  }
+
+  .score-order li::before {
+    content: counter(score-step, decimal-leading-zero);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    min-width: 26px;
+  }
+
+  .score-order li strong { color: var(--text); }
+  .score-order li.mult { color: var(--gold); }
+  .score-order li.mult strong { color: var(--gold); }
+
+  /* ── Divider ── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 48px 0;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 40px;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 20px 80px; }
+    .hero { padding: 48px 20px 40px; }
+    .toc { grid-template-columns: 1fr; }
+    .boss-grid { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Game Design Document</div>
+  <h1>Dead Man's<br><em>Switch</em></h1>
+  <div class="hero-suits">♠ ♥ ♦ ♣</div>
+  <div class="hero-sub">Version 0.6.60 &nbsp;·&nbsp; March 2026</div>
+</div>
+
+<div class="wrap">
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#overview"><span class="toc-num">01</span> Overview</a>
+    <a href="#core-rules"><span class="toc-num">02</span> Core Rules</a>
+    <a href="#scoring"><span class="toc-num">03</span> Scoring</a>
+    <a href="#cards"><span class="toc-num">04</span> Card Powers</a>
+    <a href="#levels"><span class="toc-num">05</span> Card Levels</a>
+    <a href="#progression"><span class="toc-num">06</span> Progression</a>
+    <a href="#rewards"><span class="toc-num">07</span> Reward Flow</a>
+    <a href="#bosses"><span class="toc-num">08</span> Bosses</a>
+    <a href="#relics"><span class="toc-num">09</span> Relics</a>
+    <a href="#scoring-order"><span class="toc-num">10</span> Scoring Order</a>
+  </div>
+
+  <!-- 01 Overview -->
+  <section id="overview">
+    <div class="section-label">01</div>
+    <h2>Overview</h2>
+    <p>Dead Man's Switch is a single-player roguelike deckbuilder built on the rules of the card game Switch (also known as Crazy Eights). Each run consists of 24 rounds. Every round, the player must score a target number of points by playing cards from their hand onto a middle card, following Switch matching rules.</p>
+    <p>Between rounds the player improves their deck by adding, removing, and upgrading cards, and collects relics that grant persistent bonuses. Boss rounds occur every third round and impose additional modifiers.</p>
+
+    <div class="card-grid">
+      <div class="info-card">
+        <div class="label">Rounds per run</div>
+        <div class="value">24</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Hands per round</div>
+        <div class="value">8</div>
+        <div class="note">flat throughout</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Discards per round</div>
+        <div class="value">4</div>
+        <div class="note">free; further cost 1 hand</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Hand size cap</div>
+        <div class="value">18</div>
+        <div class="note">draws stop at cap</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Boss rounds</div>
+        <div class="value">×8</div>
+        <div class="note">rounds 3, 6, 9 … 24</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Starting hand</div>
+        <div class="value">7</div>
+        <div class="note">cards drawn per round</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 Core Rules -->
+  <section id="core-rules">
+    <div class="section-label">02</div>
+    <h2>Core Rules</h2>
+
+    <h3>Playing Cards</h3>
+    <p>Each turn costs one hand. A card is legal to play if it matches the middle card by number or suit. Aces are always legal. Playing a card updates the middle card and draws back up to 7 cards (top-up draw).</p>
+
+    <h3>Multi-Card Plays</h3>
+    <p>Multiple cards may be staged and played as a single hand. Three play modes exist:</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mode</th><th>Trigger</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td class="gold">7 Dump</td><td>First card is a 7, or middle is a 7</td><td>Each subsequent card must match the previous card's suit or number. Only the final card fires its power. The opening 7's level sets the dump score multiplier.</td></tr>
+          <tr><td class="gold">Same Number</td><td>Multiple copies of same number</td><td>All cards must share the same number. Each card fires its power independently.</td></tr>
+          <tr><td class="gold">Jack Chain</td><td>First card(s) are Jacks</td><td>Leading Jacks are free (no hand cost). After Jacks, remaining card(s) follow normal staging rules from the Jack's suit.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Discard</h3>
+    <p>Cards may be discarded at any time during a round. The first 4 discards each round are free. Further discards cost 1 hand each. <strong>Every discard always draws exactly 1 replacement card</strong>, regardless of hand cap or boss rules.</p>
+
+    <div class="callout red">
+      <p><strong>Important:</strong> Staged cards cannot be discarded. All other hand cards may be discarded freely while cards are in the play zone.</p>
+    </div>
+
+    <h3>Aces</h3>
+    <p>Aces are always playable in any context — including mid-dump and after a Jack chain. Playing an Ace ends any active chain (dump or Jack sequence). On play, the player declares a suit, which becomes the active suit for the next card. If the round is already won, suit declaration is skipped.</p>
+
+    <h3>Jacks</h3>
+    <p>Jacks do not consume a hand count. Multiple Jacks may be chained. After Jacks resolve, the remaining hand follows suit from the final Jack — or an Ace may be played, which ends the chain. At L2, a Jack grants 1 additional free card slot; at L3, 2 additional free card slots. These bonus slots follow the Jack's suit (or dump rules if inside a 7 dump).</p>
+
+    <h3>Hand Size Cap</h3>
+    <p>The hand cannot exceed half the total deck size (deck + hand + discard pile combined), rounded up. This cap adjusts dynamically as cards are added or removed via rewards. Discard replacement draws are unconditional and bypass this check.</p>
+
+    <h3>Deck Exhaustion</h3>
+    <p>When the deck is empty, the discard pile is shuffled back in. This can happen at most once per round unless the Eclipse relic or The Void relic is active.</p>
+  </section>
+
+  <!-- 03 Scoring -->
+  <section id="scoring">
+    <div class="section-label">03</div>
+    <h2>Scoring</h2>
+
+    <h3>Base Card Scores</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Card</th><th>Points</th><th>Card</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>2</td><td>20</td><td>9</td><td>90</td></tr>
+          <tr><td>3</td><td>30</td><td>10</td><td>100</td></tr>
+          <tr><td>4</td><td>40</td><td>J</td><td>110</td></tr>
+          <tr><td>5</td><td>50</td><td>Q</td><td>110</td></tr>
+          <tr><td>6</td><td>60</td><td>K</td><td>110</td></tr>
+          <tr><td>7</td><td>70</td><td>A</td><td>110</td></tr>
+          <tr><td>8</td><td>80</td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Full Hand Bonus</h3>
+    <p>Playing every card currently in your hand in a single turn scores ×3, applied after all other bonuses including the Queen multiplier. The score preview bar reflects this bonus when all hand cards are staged.</p>
+
+    <h3>Hand-Size Multipliers</h3>
+    <p>Playing multiple cards in a single hand triggers a score multiplier applied after all per-card bonuses.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Cards played</th><th>Multiplier</th><th>Banner</th></tr></thead>
+        <tbody>
+          <tr><td>3</td><td class="gold">×1.5</td><td class="dim">3-CARD RUN (blue)</td></tr>
+          <tr><td>5</td><td class="gold">×2</td><td class="dim">5-CARD RUN (green)</td></tr>
+          <tr><td>7</td><td class="gold">×3</td><td class="dim">7-CARD RUN (gold)</td></tr>
+          <tr><td>10</td><td class="gold">×5</td><td class="dim">10-CARD RUN (red)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Round Targets</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Round</th><th>Target</th><th>Round</th><th>Target</th><th>Round</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>300</td><td>9</td><td>2,450</td><td>17</td><td>9,500</td></tr>
+          <tr><td>2</td><td>420</td><td>10</td><td>2,950</td><td>18</td><td>11,000</td></tr>
+          <tr><td class="red">3 ★</td><td>560</td><td class="red">11 ★</td><td>3,500</td><td class="red">19 ★</td><td>12,500</td></tr>
+          <tr><td>4</td><td>800</td><td>12</td><td>4,300</td><td>20</td><td>14,500</td></tr>
+          <tr><td>5</td><td>1,000</td><td>13</td><td>5,100</td><td>21</td><td>17,000</td></tr>
+          <tr><td class="red">6 ★</td><td>1,250</td><td class="red">14 ★</td><td>6,000</td><td class="red">22 ★</td><td>19,500</td></tr>
+          <tr><td>7</td><td>1,550</td><td>15</td><td>7,100</td><td>23</td><td>22,000</td></tr>
+          <tr><td>8</td><td>2,000</td><td>16</td><td>8,500</td><td class="red">24 ★</td><td>25,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--dim)">★ = Boss round</p>
+  </section>
+
+  <!-- 04 Card Powers -->
+  <section id="cards">
+    <div class="section-label">04</div>
+    <h2>Card Powers</h2>
+    <p>Power cards have effects that activate on play. Effects scale with card level. L0 cards have no power. Aces and Jacks have intrinsic Switch rules at all levels.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Card</th><th>L1</th><th>L2</th><th>L3</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="gold">A — Ace</td>
+            <td>Declare active suit for next card.</td>
+            <td>Declare suit + draw 1 card.</td>
+            <td>Declare suit + draw 2 cards.</td>
+          </tr>
+          <tr>
+            <td class="gold">2 — Draw</td>
+            <td>Draw 2 cards.</td>
+            <td>Draw 4 cards.</td>
+            <td>Draw 6 cards.</td>
+          </tr>
+          <tr>
+            <td class="gold">3 — Peek</td>
+            <td>View top 2 cards of the deck.</td>
+            <td>View and reorder the top 4 cards.</td>
+            <td>View top 5 cards, take 1 to hand.</td>
+          </tr>
+          <tr>
+            <td class="gold">4 — Salvage</td>
+            <td>Return 1 card from discard pile to hand. (4s cannot salvage other 4s.)</td>
+            <td>Return 2 cards from discard pile to hand.</td>
+            <td>Return 2 cards from discard pile + draw 1 from deck.</td>
+          </tr>
+          <tr>
+            <td class="gold">5 — Tempo</td>
+            <td>Next same-suit card this round costs 0 hands.</td>
+            <td>Next 2 same-suit cards cost 0 hands.</td>
+            <td>Next 2 same-suit cards cost 0 hands + next hand scored gains +100 pts.</td>
+          </tr>
+          <tr>
+            <td class="gold">6 — Mend</td>
+            <td>Recover 1 used free discard.</td>
+            <td>Recover 2 used free discards.</td>
+            <td>Recover all used free discards.</td>
+          </tr>
+          <tr>
+            <td class="gold">7 — Dump</td>
+            <td>Open a suit dump (no score mult). Only the final card in the chain fires its power.</td>
+            <td>Dump score ×1.5.</td>
+            <td>Dump score ×2.</td>
+          </tr>
+          <tr>
+            <td class="gold">8 — Hand+</td>
+            <td>+1 hand remaining.</td>
+            <td>+2 hands remaining.</td>
+            <td>+2 hands remaining + draw 1 card.</td>
+          </tr>
+          <tr>
+            <td class="gold">9 — Reset</td>
+            <td>Reshuffle hand into deck, draw 7 fresh cards.</td>
+            <td>Reshuffle hand into deck, draw 9 fresh cards.</td>
+            <td>Reshuffle hand, draw 9, then peek at the top 3 cards of the deck.</td>
+          </tr>
+          <tr>
+            <td class="gold">10 — Surge</td>
+            <td>+100 pts added to the next hand scored.</td>
+            <td>+200 pts added to the next hand scored.</td>
+            <td>+300 pts added to the next hand scored + grant +1 hand.</td>
+          </tr>
+          <tr>
+            <td class="gold">J — Jack</td>
+            <td>Free play (no hand cost).</td>
+            <td>Free play + 1 bonus free card slot after the Jack.</td>
+            <td>Free play + 2 bonus free card slots after the Jack.</td>
+          </tr>
+          <tr>
+            <td class="gold">Q — Queen</td>
+            <td>Next hand scored ×2.</td>
+            <td>Next hand scored ×3.</td>
+            <td>Next hand scored ×4, effect persists for 2 hands.</td>
+          </tr>
+          <tr>
+            <td class="gold">K — King</td>
+            <td>Draw 5 cards.</td>
+            <td>Draw 6 cards.</td>
+            <td>Draw 7 cards.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <p><strong>7 Dump rules:</strong> A dump is strict suit-only — each card must match the opening 7's suit. Jacks may be played mid-dump; if the Jack matches the dump suit it continues the dump, if it does not it exits the dump and enters Jack mode. Aces are always legal in a dump. An unsuited Ace (not matching the dump suit) is terminal — only further Aces may follow. Only the final card fires its power. The opening 7's level sets the dump score multiplier.</p>
+    </div>
+
+    <div class="callout blue">
+      <p><strong>Jack bonus slots:</strong> After a Jack, any card matching the Jack's suit may be staged for free. Further Jacks may always be chained. An Ace played after a Jack enters ace-declaration mode — only further Aces may follow.</p>
+    </div>
+  </section>
+
+  <!-- 05 Card Levels -->
+  <section id="levels">
+    <div class="section-label">05</div>
+    <h2>Card Levels</h2>
+
+    <p>Every card has a level from L0 to L3. Level affects power strength and visual appearance. Upgrading is a core reward action.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Level</th><th>Visual</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><span class="lv lv0">L0</span></td><td>White — no gradient</td><td>No power effect. Starting level for 3, 4, 5, 6, 9, 10, Q. Red Kings.</td></tr>
+          <tr><td><span class="lv lv1">L1</span></td><td>Steel-grey diagonal gradient, silver border</td><td>Basic power active. Starting level for A, 2, 7, 8, J. Black Kings.</td></tr>
+          <tr><td><span class="lv lv2">L2</span></td><td>Gold diagonal gradient, gold border</td><td>Upgraded power.</td></tr>
+          <tr><td><span class="lv lv3">L3</span></td><td>Blue diagonal gradient, blue border</td><td>Maximum power. Cap for all cards.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>Always L1 on deal</h4>
+    <p>A, 2, 7, 8, J — these cards always enter the deck at L1.</p>
+
+    <h4>Start at L0</h4>
+    <p>3, 4, 5, 6, 9, 10, Q — start at L0 (no power until upgraded).</p>
+
+    <h4>King exception</h4>
+    <p>Black Kings (♠, ♣) start at L1. Red Kings (♥, ♦) start at L0.</p>
+
+    <h4>Hexer boss curse</h4>
+    <p>When the Hexer is active, one randomly chosen card number is treated as L0 for the round, regardless of its actual level.</p>
+
+    <h4>On The Gear relic</h4>
+    <p>On acquisition, 5 random cards across your deck, hand, and discard pile are upgraded by one level (max L3).</p>
+  </section>
+
+  <!-- 06 Progression -->
+  <section id="progression">
+    <div class="section-label">06</div>
+    <h2>Progression</h2>
+
+    <p>The run lasts 24 rounds, with boss rounds at every 3rd. Difficulty increases via score targets and boss modifiers. The deck evolves through reward choices between rounds.</p>
+
+    <h3>Deck Composition</h3>
+    <p>The player begins with a standard 52-card deck. Cards are added, removed, and upgraded through rewards. Card counts directly affect draw probability, so deck thinning is a meaningful strategy.</p>
+  </section>
+
+  <!-- 07 Reward Flow -->
+  <section id="rewards">
+    <div class="section-label">07</div>
+    <h2>Reward Flow</h2>
+
+    <p>After each won round, the player is offered <strong>2 choices</strong> drawn from the available action pool. Choices are selected, then confirmed before applying (except Relic, which applies immediately on click).</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Action</th><th>Available</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="gold">Add Card</td>
+            <td>Every round</td>
+            <td>Pick one card to add to the deck from a generated selection. On boss rounds, only L1+ cards are offered (no L0 cards).</td>
+          </tr>
+          <tr>
+            <td class="gold">Remove Card</td>
+            <td>Every round</td>
+            <td>Pick one card from the deck to permanently remove. Deck thinning improves draw consistency.</td>
+          </tr>
+          <tr>
+            <td class="gold">Upgrade Card</td>
+            <td>Every round</td>
+            <td>Pick one card from the deck to upgrade by one level (L0→L1→L2→L3). Cards at L3 cannot be upgraded further.</td>
+          </tr>
+          <tr>
+            <td class="gold">Relic</td>
+            <td>Boss rounds only</td>
+            <td>Choose one of three offered relics. Applied immediately on selection, no confirmation step.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Starting Relic</h3>
+    <p>Before round 1, the player picks one starting relic from a pool of 3 offered choices. Legendary relics are not available in the starting pool.</p>
+
+    <h3>Rerolling</h3>
+    <p>Players accumulate reroll charges from two sources: the <strong>Fuck That</strong> relic grants +3 charges on acquisition, and defeating a boss grants +1 charge. All charges are pooled together. When charges remain, a reroll button appears on reward action screens. Fuck That is removed from inventory when its contributed charges are exhausted, but any bonus charges from boss wins persist independently.</p>
+  </section>
+
+  <!-- 08 Bosses -->
+  <section id="bosses">
+    <div class="section-label">08</div>
+    <h2>Bosses</h2>
+
+    <p>Every third round is a boss round. Bosses impose a modifier for that round only. The score target is adjusted (shown as a percentage of the normal target).</p>
+
+    <div class="boss-grid">
+      <div class="boss-card">
+        <div class="boss-name">The Warden</div>
+        <div class="boss-key">shackled</div>
+        <div class="boss-effect">Maximum hand size reduced to 12 cards.</div>
+        <div class="boss-mult">Target: 100%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Usurer</div>
+        <div class="boss-key">double_debt</div>
+        <div class="boss-effect">Paid discards (beyond free quota) cost 2 hands each instead of 1.</div>
+        <div class="boss-mult">Target: 100%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Marksman</div>
+        <div class="boss-key">one_shot</div>
+        <div class="boss-effect">26-card starting hand, only 1 hand allowed. 5 free discards. Replacement draws still occur on discard.</div>
+        <div class="boss-mult">Target: 55%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Hexer</div>
+        <div class="boss-key">cursed_number</div>
+        <div class="boss-effect">One randomly chosen card number is treated as L0 for the entire round.</div>
+        <div class="boss-mult">Target: 85%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Eroder</div>
+        <div class="boss-key">diminishing</div>
+        <div class="boss-effect">Each successive hand scores 10% less than the previous. Score multiplier floors at 30%.</div>
+        <div class="boss-mult">Target: 65%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Purist</div>
+        <div class="boss-key">suit_lock</div>
+        <div class="boss-effect">Only suit matches are legal. Number matches are disabled. Colorblind relic still applies suit grouping.</div>
+        <div class="boss-mult">Target: 55%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Alchemist</div>
+        <div class="boss-key">all_power</div>
+        <div class="boss-effect">All L0 cards are removed from the deck for this round. Restored after the round ends.</div>
+        <div class="boss-mult">Target: 140%</div>
+      </div>
+      <div class="boss-card">
+        <div class="boss-name">The Anarchist</div>
+        <div class="boss-key">no_monarchy</div>
+        <div class="boss-effect">All Jacks, Queens, and Kings are removed from the deck for this round. Restored after.</div>
+        <div class="boss-mult">Target: 70%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 Relics -->
+  <section id="relics">
+    <div class="section-label">09</div>
+    <h2>Relics</h2>
+
+    <p>Relics are persistent items that modify game rules, scoring, or economy. They are acquired after boss rounds. Some relics are consumable (removed on use), stackable (multiple copies stack), or have charges.</p>
+
+    <h3>Common</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Relic</th><th>Key</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>💀 Dead Man's Hand</td><td class="dim">dead_mans_hand</td><td>Aces score 200 pts instead of 110.</td></tr>
+          <tr><td>🌱 Seedling</td><td class="dim">seedling</td><td>7s score +75 bonus pts each.</td></tr>
+          <tr><td>🔗 Daisy Chain</td><td class="dim">daisy_chain</td><td>In any multi-card hand, each card after the first scores +25 flat bonus.</td></tr>
+          <tr><td>🪙 Iron Gut</td><td class="dim">iron_gut</td><td>2s score double base points.</td></tr>
+          <tr><td>💰 Penny Pincher</td><td class="dim">penny_pincher</td><td>At the end of each round, each unused free discard upgrades a random L0 card in the deck to L1.</td></tr>
+          <tr><td>⚡ Swift Hand</td><td class="dim">swift_hand</td><td>At round end, gain +1 extra hand next round for every 3 unused hands (max +2).</td></tr>
+          <tr><td>📖 Dusty Tome</td><td class="dim">dusty_tome</td><td>Jacks score +50 pts each.</td></tr>
+          <tr><td>💛 Heart of Gold</td><td class="dim">heart_of_gold</td><td>♥ cards score +20 pts each.</td></tr>
+          <tr><td>🕳️ Ace in the Hole</td><td class="dim">ace_in_hole</td><td>After each successful round, a random Ace is added to your deck. The Ace's level scales with round number: L3 chance rises from 5% to 20%, L2 from 20% to 40%.</td></tr>
+          <tr><td>🗑️ Trashman</td><td class="dim">trashman</td><td>+1 free discard per round. <em>Stackable — multiple copies add up.</em></td></tr>
+          <tr><td>♣️ Club House</td><td class="dim">club_house</td><td>♣ cards score +20 pts each.</td></tr>
+          <tr><td>♠️ Spade Work</td><td class="dim">spade_work</td><td>♠ cards score +20 pts each.</td></tr>
+          <tr><td>♦️ Diamond Eye</td><td class="dim">diamond_eye</td><td>♦ cards score +20 pts each.</td></tr>
+          <tr><td>🎲 Gambler's Chip</td><td class="dim">gamblers_chip</td><td>Each round, one random card in your starting hand is always legally playable regardless of the middle card.</td></tr>
+          <tr><td>⭐ Tin Star</td><td class="dim">tin_star</td><td>Queens score +50 pts each.</td></tr>
+          <tr><td>👢 Old Boots</td><td class="dim">old_boots</td><td>9s score +40 bonus pts each (130 pts total).</td></tr>
+          <tr><td>🐀 Pack Rat</td><td class="dim">pack_rat</td><td>Increases your maximum hand size by 4 (on top of the standard half-deck cap).</td></tr>
+          <tr><td>🐇 Rabbit Foot</td><td class="dim">rabbit_foot</td><td>When you draw the last card from the deck, draw one extra card.</td></tr>
+          <tr><td>📊 Tally Stick</td><td class="dim">tally_stick</td><td>Every 3rd hand played in a round scores +100 flat bonus.</td></tr>
+          <tr><td>🧭 Worn Compass</td><td class="dim">worn_compass</td><td>8s score +40 pts each.</td></tr>
+          <tr><td>🎒 Full House</td><td class="dim">canteen</td><td>Once per round: discard your entire hand and draw 7 fresh cards.</td></tr>
+          <tr><td>🌡️ Fever</td><td class="dim">fever</td><td>The first hand each round scores +50 pts.</td></tr>
+          <tr><td>🧩 Odd Fit</td><td class="dim">odd_fit</td><td>Cards that match the middle by number only (different suit) score +40 pts each.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Uncommon</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Relic</th><th>Key</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>🃏 The Fool</td><td class="dim">the_fool</td><td>Your first hand played each round scores ×2.</td></tr>
+          <tr><td>🩸 Blood Pact</td><td class="dim">blood_pact</td><td>Queens multiply the next hand by ×3 instead of ×2, but cost 1 extra hand when played.</td></tr>
+          <tr><td>🪬 Ward</td><td class="dim">ward</td><td>Once per round: if you would run out of hands, prevent it and draw 2 cards instead.</td></tr>
+          <tr><td>💥 Chain Reaction</td><td class="dim">chain_reaction</td><td>Playing multiple 2s: their draw values multiply instead of add. (e.g. L1+L2+L1 = 2×4×2 = 16 draws)</td></tr>
+          <tr><td>🪞 Mirror Shard</td><td class="dim">mirror_shard</td><td>The first card you discard each round does not count against your free discard limit.</td></tr>
+          <tr><td>🌙 Night Market</td><td class="dim">night_market</td><td>Reward screens show 8 options for Add, Remove, and Upgrade choices instead of 6.</td></tr>
+          <tr><td>⚒️ The Anvil</td><td class="dim">the_anvil</td><td>Playing a card that matches the middle card's number scores +150 bonus.</td></tr>
+          <tr><td>🦊 Fox's Gambit</td><td class="dim">foxs_gambit</td><td>Each Jack played draws 1 extra card.</td></tr>
+          <tr><td>🐰 White Rab</td><td class="dim">white_rab</td><td>In a multi-card hand, the largest group of same-number cards multiplies the total score by that group's size (e.g. three 5s = ×3).</td></tr>
+          <tr><td>⚙️ On The Gear</td><td class="dim">double_jump</td><td>On acquisition: 5 random cards across your deck, hand, and discard pile are upgraded by one level (max L3).</td></tr>
+          <tr><td>🎲 Fuck That</td><td class="dim">fuck_that</td><td>Grants +3 reroll charges to the shared pool on acquisition. Consumed when all charges are exhausted — returns to the relic pool.</td></tr>
+          <tr><td>🗺️ Do Where Labs On?</td><td class="dim">do_where_labs_on</td><td>At the start of each round, pick any card from your hand to set as the opening middle card. That card scores no points.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Rare</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Relic</th><th>Key</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>🎯 Sniper</td><td class="dim">sniper</td><td>Single-card hands score ×3.</td></tr>
+          <tr><td>🔥 Wildfire</td><td class="dim">wildfire</td><td>In a dump chain with more than 3 cards, each card after the 3rd scores double.</td></tr>
+          <tr><td>👑 The Crown</td><td class="dim">the_crown</td><td>If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%.</td></tr>
+          <tr><td>🌑 Eclipse</td><td class="dim">eclipse</td><td>Once per round: when the deck is empty, reshuffle the discard pile back in.</td></tr>
+          <tr><td>🏦 The Vault</td><td class="dim">the_vault</td><td>Once per run, take 3 reward choices instead of 2 after a round clear.</td></tr>
+          <tr><td>📒 Can I See Your Logbook?</td><td class="dim">logbook</td><td>On acquisition: choose one relic you already own — its effect is duplicated. Stackable relics like Trashman add another stack.</td></tr>
+          <tr><td>🪟 Mirror Image</td><td class="dim">mirror_image</td><td>On acquisition, every card in your deck, hand, and discard pile is duplicated. A 20-card collection becomes 40. Non-stackable.</td></tr>
+          <tr><td>🎨 Colorblind</td><td class="dim">colorblind</td><td>♠/♣ are treated as the same suit. ♥/♦ are treated as the same suit. Applies to all suit matching including dumps.</td></tr>
+          <tr><td>👑 On Yersel Hen!</td><td class="dim">on_yersel_hen</td><td>Each hand you play scores +100 for every unplayed Queen currently held in your hand.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Legendary</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Relic</th><th>Key</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>🪨 Philosopher's Stone</td><td class="dim">philosophers_stone</td><td>Every card played scores at least 100 pts, regardless of base value.</td></tr>
+          <tr><td>🐍 Ouroboros</td><td class="dim">ouroboros</td><td>Discarded cards return to hand immediately instead of the discard pile.</td></tr>
+          <tr><td>🌌 The Void</td><td class="dim">the_void</td><td>Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.</td></tr>
+          <tr><td>🌊 Crimson Tide</td><td class="dim">crimson_tide</td><td>Every Queen played permanently increases the base Queen multiplier by ×1 (stacks across rounds).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout blue">
+      <p><strong>Logbook note:</strong> Logbook does not appear in the player's relic bar — it is consumed the moment it is selected, prompting the player to choose which owned relic to duplicate.</p>
+    </div>
+
+    <div class="callout">
+      <p><strong>Legendary relics</strong> are not available in the starting relic pool. They may appear only in boss round reward pools.</p>
+    </div>
+  </section>
+
+  <!-- 10 Scoring Order -->
+  <section id="scoring-order">
+    <div class="section-label">10</div>
+    <h2>Scoring Order</h2>
+    <p>The following steps are applied in sequence when a hand is scored. Additive bonuses are applied before multipliers.</p>
+
+    <ol class="score-order">
+      <li><strong>Base card scores</strong> — face value × 10 pts per card</li>
+      <li><strong>Philosopher's Stone floor</strong> — minimum 100 pts per card enforced after base</li>
+      <li><strong>Per-card number bonuses</strong> — Dusty Tome (+50 per J), Tin Star (+50 per Q), Old Boots (+40 per 9), Worn Compass (+40 per 8)</li>
+      <li><strong>Suit bonuses</strong> — Heart of Gold, Club House, Spade Work, Diamond Eye (+20 per matching card)</li>
+      <li><strong>The Anvil</strong> — +150 pts when a played card matches the middle card's number</li>
+      <li><strong>Wildfire</strong> — each card after the 3rd in a dump chain scores double (additive pass)</li>
+      <li><strong>Fever</strong> — +50 pts if this is the first hand of the round</li>
+      <li><strong>Odd Fit</strong> — +40 pts per card that matched by number only</li>
+      <li><strong>On Yersel Hen!</strong> — +100 pts per unplayed Queen currently in hand</li>
+      <li><strong>Tally Stick</strong> — +100 pts on every 3rd hand played</li>
+      <li><strong>Daisy Chain</strong> — +25 pts per card after the first in a multi-card hand</li>
+      <li><strong>Surge bonus</strong> — flat bonus from 10-power applied</li>
+      <li><strong>Tempo bonus</strong> — flat bonus from 5 L3 power applied</li>
+      <li><strong>Seedling</strong> — +75 pts per 7 played</li>
+      <li class="mult"><strong>→ Hand-size multiplier</strong> — ×1.5 (3 cards) / ×2 (5) / ×3 (7) / ×5 (10)</li>
+      <li class="mult"><strong>→ White Rab</strong> — ×N where N = size of largest same-number group (multi-card hands only)</li>
+      <li class="mult"><strong>→ The Fool</strong> — ×2 (first hand of round only)</li>
+      <li class="mult"><strong>→ Sniper</strong> — ×3 (single-card hands only)</li>
+      <li class="mult"><strong>→ Diminishing boss</strong> — applies Eroder reduction (floors at ×0.3)</li>
+      <li class="mult"><strong>→ Queen multiplier</strong> — active if a Queen was played the previous hand</li>
+      <li class="mult"><strong>→ Full Hand bonus</strong> — ×3 if every card in hand was played this turn</li>
+    </ol>
+  </section>
+</div>
+
+<div class="footer">
+  DEAD MAN'S SWITCH &nbsp;·&nbsp; GDD v0.6.60 &nbsp;·&nbsp; MARCH 2026 &nbsp;·&nbsp; SUBJECT TO CHANGE
+</div>
+
+</body>
+</html>
