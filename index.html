@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.6.70</title>
+<title>Dead Man's Switch v0.6.72</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.70</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.72</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.70</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.72</div>
     </div>
   </div>
 
@@ -1271,7 +1271,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.6.70 — Game Log`,
+    `DEAD MAN'S SWITCH v0.6.72 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1370,7 +1370,7 @@ function updateHUD() {
     const pip = lv > 0 ? `<div class="card-level-pip">${'●'.repeat(lv)}</div>` : '';
     const cls = (canDrag ? 'legal' : 'illegal') + (lvClass ? ' ' + lvClass : '');
     // All cards are draggable — play zone enforces legality on drop, discard zone accepts any
-    return `<div class="card ${cardColor(card)} ${cls}" draggable="true" data-hand-idx="${i}" data-card-key="${card.n+card.s}" style="color:${isRed(card)?'#cc2222':'#111'}">
+    return `<div class="card ${cardColor(card)} ${cls}" draggable="true" data-hand-idx="${i}" data-card-key="${card.n+card.s}" data-card-level="${lv}" style="color:${isRed(card)?'#cc2222':'#111'}">
       <div class="corner"><span style="font-size:9px">${card.n}</span><span style="font-size:9px">${card.s}</span></div>
       <div style="font-size:${card.n==='10'?'18px':'22px'}">${card.n}</div>
       <div style="font-size:11px">${card.s}</div>
@@ -4674,7 +4674,7 @@ const POWER_DESCRIPTIONS = {
     0: null,
     1: 'Declare the active suit for the next card played.',
     2: 'Declare suit + draw 1 card.',
-    3: 'Wild — always legal to play. Declare suit + draw 2 cards.',
+    3: 'Declare suit + draw 2 cards.',
   },
   '2': {
     0: null,
@@ -4685,20 +4685,20 @@ const POWER_DESCRIPTIONS = {
   '3': {
     0: 'No power.',
     1: 'Peek at the top 2 cards of the deck.',
-    2: 'Peek at the top 4 cards and reorder them.',
+    2: 'Peek at the top 4 cards and reorder them freely.',
     3: 'Peek at the top 5 cards and take 1 into your hand.',
   },
   '4': {
     0: 'No power.',
-    1: 'Return 1 card from the discard pile to your hand.',
-    2: 'Return 2 cards from the discard pile to your hand.',
-    3: 'Return any card from the discard pile + draw 1.',
+    1: 'Salvage 1 card from your discard pile into your hand.',
+    2: 'Salvage 2 cards from your discard pile into your hand.',
+    3: 'Salvage 2 cards from your discard pile + draw 1 from deck.',
   },
   '5': {
     0: 'No power.',
     1: 'The next same-suit card you play costs 0 hands.',
     2: 'The next 2 same-suit cards you play cost 0 hands.',
-    3: 'The next 2 same-suit cards cost 0 hands, and the next hand scores +100 pts.',
+    3: 'The next 2 same-suit cards cost 0 hands + the next hand scores +100 pts.',
   },
   '6': {
     0: 'No power.',
@@ -4707,10 +4707,10 @@ const POWER_DESCRIPTIONS = {
     3: 'Recover all used free discards.',
   },
   '7': {
-    0: 'Trigger a suit dump — play all cards of this suit at once. The last card fires its power.',
-    1: 'Trigger a suit dump — play all cards of this suit at once. The last card fires its power.',
-    2: 'Suit dump. Last card fires its power. Dump scores ×1.5.',
-    3: 'Suit dump. Last card fires its power. Dump scores ×2.',
+    0: 'Open a suit dump — chain cards of this suit. Only the last card fires its power.',
+    1: 'Open a suit dump — chain cards of this suit. Only the last card fires its power.',
+    2: 'Open a suit dump. The dump scores ×1.5.',
+    3: 'Open a suit dump. The dump scores ×2.',
   },
   '8': {
     0: null,
@@ -4720,27 +4720,27 @@ const POWER_DESCRIPTIONS = {
   },
   '9': {
     0: 'No power.',
-    1: 'Reshuffle your hand into the deck and draw 7 fresh cards.',
-    2: 'Reshuffle your hand into the deck and draw 9 fresh cards.',
-    3: 'Reshuffle your hand, draw 9, then peek at the top 3 cards of the deck.',
+    1: 'Shuffle your hand into the deck and draw 7 fresh cards.',
+    2: 'Shuffle your hand into the deck and draw 9 fresh cards.',
+    3: 'Shuffle your hand, draw 9 fresh cards, then peek at the top 3 of the deck.',
   },
   '10': {
     0: 'No power.',
-    1: '+100 pts flat bonus added to the next hand you score.',
-    2: '+200 pts flat bonus added to the next hand you score.',
-    3: '+300 pts flat bonus to the next hand + grant +1 hand.',
+    1: '+100 pts bonus added to your next scored hand.',
+    2: '+200 pts bonus added to your next scored hand.',
+    3: '+300 pts bonus to your next scored hand + grant +1 hand.',
   },
   'J': {
     0: null,
     1: 'Free play — does not consume a hand.',
-    2: 'Free play + draw 1 card.',
-    3: 'Free play + draw 2 cards + scores 100 pts.',
+    2: 'Free play + draw 1 card. Grants 1 bonus staging slot.',
+    3: 'Free play + draw 2 cards. Grants 2 bonus staging slots.',
   },
   'Q': {
     0: 'No power.',
     1: 'The next hand you play scores ×2.',
     2: 'The next hand you play scores ×3.',
-    3: 'The next hand scores ×4, and persists for 2 hands.',
+    3: 'The next hand scores ×4, persisting for 2 hands.',
   },
   'K': {
     0: null,
@@ -4754,14 +4754,15 @@ function getTooltipContent(card) {
   const suitName = {'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'}[card.s];
   const isRedCard = RED_SUITS.has(card.s);
   const col = isRedCard ? '#cc2222' : '#ddd';
-  const lv = card.level || 0;
+  // Use effectiveLevel during a round (respects cursed_number boss), else card.level
+  const lv = (G.roundNum && typeof effectiveLevel === 'function') ? effectiveLevel(card) : (card.level || 0);
   const lvLabel = lv === 0 ? '' : ['','★','★★','★★★'][lv];
   const lvColour = ['','rgba(180,180,210,0.9)','rgba(201,168,76,1)','rgba(100,160,240,1)'][lv] || '';
   const lvSpan = lv > 0 ? ` <span style="color:${lvColour};font-size:11px;">${lvLabel}</span>` : '';
   const name = `<span style="color:${col}">${card.n} of ${suitName}</span>${lvSpan}`;
   const score = `Base score: <b style="color:var(--gold)">${BASE_SCORES[card.n]} pts</b>`;
   const desc = POWER_DESCRIPTIONS[card.n];
-  const power = desc ? (desc[lv] || '') : '';
+  const power = (desc && desc[lv]) ? desc[lv] : (lv === 0 ? null : '');
   return { name, score, power };
 }
 
