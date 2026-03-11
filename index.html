@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.6</title>
+<title>Dead Man's Switch v0.7.8</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.6</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.8</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.6</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.8</div>
     </div>
   </div>
 
@@ -1281,7 +1281,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.6 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.8 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2840,18 +2840,102 @@ function executeChainFromStaged(ordered) {
 
   // 3-power exception: fire all Threes in the hand regardless of position
   // (skip last card — fireLastCardPower handles it if it's a 3)
-  const threesFired = new Set();
   for (let ti = 0; ti < ordered.length - 1; ti++) {
     const tc = ordered[ti];
-    if (tc.n === '3' && (effectiveLevel(tc) >= 1)) {
+    if (tc.n === '3' && effectiveLevel(tc) >= 1) {
       const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
       G._freeRelicChance = (G._freeRelicChance || 0) + pct;
-      log(`3${ordered.length > 1 ? tc.s : ''} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
-      threesFired.add(ti);
+      log(`3${tc.s} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
     }
   }
 
+  // Trailing same-number stack: if the chain ends with 2+ cards of the same number,
+  // fire each card's power independently (matches executeSameNumberFromStaged behaviour).
+  // Cards with stackable powers: 2, 3, 6, 8, 10, K.
+  // Others (4, 9, Q, A, J) fall through to fireLastCardPower as normal.
+  const STACKABLE_POWERS = new Set(['2', '3', '6', '8', '10', 'K']);
   const last = ordered[ordered.length - 1];
+  const tailNum = last.n;
+  const tailCards = [];
+  for (let i = ordered.length - 1; i >= 0 && ordered[i].n === tailNum; i--) tailCards.unshift(ordered[i]);
+
+  if (tailCards.length > 1 && STACKABLE_POWERS.has(tailNum)) {
+    // Fire each tail card's power independently
+    const _diChainStack = G.hand.length;
+    const afterStack = () => {
+      const isJack = false; // stackable powers are never Jacks
+      if (!consumeTempoIfApplicable(ordered)) G.handsUsed++;
+      log(`Hands left: ${handsLeft()}`, 'dim');
+      drawUp(); updateHUD(); renderActions(); animateDealIn(_diChainStack); checkRoundEnd();
+    };
+
+    if (tailNum === '2') {
+      if (G.relics.includes('chain_reaction') && tailCards.length > 1) {
+        const factors = tailCards.map(c => { const lv = c.level || 0; return lv === 0 ? 1 : lv === 1 ? 2 : lv === 2 ? 4 : 6; });
+        const amount = factors.reduce((a, b) => a * b, 1);
+        const drawn = drawUp(amount);
+        log(`💥 Chain Reaction! ${tailCards.map((c,i)=>`L${c.level||0}(×${factors[i]})`).join(' × ')} = draw ${amount} → drew ${drawn}!`, 'gold');
+        pulseRelic('chain_reaction');
+      } else {
+        for (const two of tailCards) {
+          const lv = two.level || 0;
+          if (lv >= 1) { const perCard = lv === 1 ? 2 : lv === 2 ? 4 : 6; const drawn = drawUp(perCard); log(`2${two.s} L${lv}! Drew ${drawn}.`, 'blue'); }
+        }
+      }
+      afterStack(); return;
+    }
+    if (tailNum === '3') {
+      // 3s at the tail: power already fired for non-last cards above; fire last 3 here
+      for (const three of tailCards) {
+        const lv = effectiveLevel(three);
+        if (lv >= 1) {
+          const pct = lv === 1 ? 3 : lv === 2 ? 6 : 9;
+          G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+          log(`3${three.s} L${lv}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
+        }
+      }
+      afterStack(); return;
+    }
+    if (tailNum === '6') {
+      for (const six of tailCards) {
+        const lv = effectiveLevel(six);
+        if (lv >= 1) {
+          if (lv >= 3) { G.discUsed = Math.max(-2, G.discUsed - 2); log(`6${six.s} L3! +2 extra discards (free: ${freeDiscsLeft()})`, 'blue'); }
+          else { const recover = lv === 1 ? 1 : 2; const actual = Math.min(recover, G.discUsed); G.discUsed = Math.max(0, G.discUsed - actual); log(`6${six.s} L${lv}! Recovered ${actual} discard${actual!==1?'s':''} (free: ${freeDiscsLeft()})`, 'blue'); }
+        }
+      }
+      updateHUD(); afterStack(); return;
+    }
+    if (tailNum === '8') {
+      for (const eight of tailCards) {
+        const lv = eight.level || 0;
+        if (lv >= 1) {
+          const extraHands = lv >= 2 ? 2 : 1;
+          G.handsUsed -= extraHands;
+          if (lv >= 3) { const drawn = drawUp(1); log(`8${eight.s} L3! +${extraHands} hand${extraHands>1?'s':''}. Drew ${drawn}.`, 'blue'); }
+          else { log(`8${eight.s} L${lv}! +${extraHands} hand${extraHands>1?'s':''} (${handsLeft()} left)`, 'blue'); }
+        }
+      }
+      updateHUD(); afterStack(); return;
+    }
+    if (tailNum === '10') {
+      for (const ten of tailCards) {
+        const lv = effectiveLevel(ten);
+        if (lv >= 1) { const bonus = lv === 1 ? 100 : lv === 2 ? 200 : 300; G.surgeBonus = (G.surgeBonus || 0) + bonus; log(`10${ten.s} L${lv}! +${bonus} pts to next hand (surge total: ${G.surgeBonus})`, 'blue'); }
+      }
+      afterStack(); return;
+    }
+    if (tailNum === 'K') {
+      let totalDraw = 0;
+      for (const k of tailCards) {
+        const lv = k.level || 0;
+        if (lv >= 1) { const drawCount = lv === 1 ? 5 : lv === 2 ? 6 : 7; const drawn = drawUp(drawCount); totalDraw += drawn; log(`K${k.s} L${lv}! Drew ${drawn}.`, 'blue'); }
+      }
+      if (totalDraw > 0) log(`Kings total draw: ${totalDraw}. Hand: ${G.hand.length}.`, 'dim');
+      afterStack(); return;
+    }
+  }
+
   const _diChain = G.hand.length;
   const aceInChain = last.n === 'A';
   const wasDump = ordered[0].n === '7' || ordered.some(c => c.n === '7');
@@ -3850,6 +3934,16 @@ function executeDump() {
 
   applyScore(ordered, raw);
   log(`Dump: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
+
+  // 3-power exception: fire all Threes in the hand regardless of position
+  for (let ti = 0; ti < ordered.length - 1; ti++) {
+    const tc = ordered[ti];
+    if (tc.n === '3' && effectiveLevel(tc) >= 1) {
+      const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
+      G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+      log(`3${tc.s} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
+    }
+  }
 
   // Only last card fires power (with proper continuation)
   const last = ordered[ordered.length - 1];
