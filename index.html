@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.6.72</title>
+<title>Dead Man's Switch v0.7.6</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.6.72</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.6</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.6.72</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.6</div>
     </div>
   </div>
 
@@ -945,6 +945,16 @@ body {
     <button class="btn primary" id="congrats-btn" style="font-size:14px;padding:12px 36px;letter-spacing:2px;margin-top:8px;" onclick="proceedToRewards()">
       Claim Rewards →
     </button>
+  </div>
+</div>
+
+<div id="lucky-3-screen" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:20px;padding:32px 24px;">
+    <div style="font-size:28px;letter-spacing:10px;opacity:0.5;">♠ ♥ ♦ ♣</div>
+    <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center;">🃏 LUCKY THREE!</div>
+    <div style="color:var(--dim);font-size:12px;letter-spacing:1px;text-align:center;" id="lucky3-subtitle"></div>
+    <div id="lucky3-options" style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:8px 0;"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;" id="lucky3-actions"></div>
   </div>
 </div>
 
@@ -1271,7 +1281,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.6.72 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.6 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1593,6 +1603,16 @@ function calcPreviewScore(cards) {
   // Seedling: +75 per 7
   if (G.relics.includes('seedling')) raw += cards.filter(c => c.n === '7').length * 75;
 
+  // 5 passive: each 5 held in hand (not being played) adds flat pts before multipliers
+  {
+    const playedKeys = new Set(cards.map(c => c.n + c.s));
+    const heldFives = G.hand.filter(c => c.n === '5' && !playedKeys.has(c.n + c.s));
+    for (const five of heldFives) {
+      const flv = (G.roundNum && typeof effectiveLevel === 'function') ? effectiveLevel(five) : (five.level || 0);
+      if (flv >= 1) raw += flv === 1 ? 50 : flv === 2 ? 100 : 150;
+    }
+  }
+
   // Wildfire: same-suit run of 4+ — cards after 3rd in the run score again (fixed: suit-gated)
   if (G.relics.includes('wildfire') && cards.length > 3) {
     const firstSuit = cards[0].s;
@@ -1691,6 +1711,7 @@ function startGame() {
     _roundEnding: false,
     bestHand: null,
     openSevenLevel: 0,
+    _dumpMult: 1,         // accumulated 7 dump multiplier (product of all L2/L3 sevens staged)
     bossSchedule: null,
     activeBoss: null,
     _bossRemovedCards: null,
@@ -1703,6 +1724,8 @@ function startGame() {
     _rewardSelectedIdx: null,
     _rewardSubtractIdxs: [],   // for subtract: up to 2 selected
     _vaultRoundsLeft: 0,  // The Vault: rounds remaining with +1 choice
+    _freeRelicChance: 0,   // accumulated free relic chance from 3s played this round
+    _lucky3Options: null,   // pending free relic choices from Lucky 3
     _fuckThatCharges: 0,
     _rerollCharges: 0,
     fullLog: [],
@@ -2001,7 +2024,7 @@ function startRound() {
   G.score = 0; G.handsUsed = 0; G.discUsed = 0;
   G.queenMult = 1; G.queenMultTurns = 0;
   G.aceSuit = null;
-  G.selectedIdx = null; G.staged = []; G._stagedMode = null; G._jackBonusSlots = 0; G._pendingFullHandMult = false;
+  G.selectedIdx = null; G.staged = []; G._stagedMode = null; G._jackBonusSlots = 0; G._pendingFullHandMult = false; G._freeRelicChance = 0; G._dumpMult = 1;
   G._lossReason = null; G._roundEnding = false;
   G.foolUsed = false; G.wardUsed = false; G.eclipseUsed = false;
   G.dumpHandUsed = false; G.shieldUsed = false; G.mirrorUsed = false;
@@ -2030,6 +2053,7 @@ function startRound() {
   G.pile = [G.middle];
   G.openSeven = G.middle.n === '7' ? G.middle.s : null;
   G.openSevenLevel = (G.middle.n === '7') ? (G.middle.level || 0) : 0;
+  { const lv = G.openSevenLevel; G._dumpMult = lv >= 3 ? 2 : lv >= 2 ? 1.5 : 1; }
   applyBossEffects();
 
   // Draw hand (one_shot boss already dealt 26 cards in applyBossEffects)
@@ -2091,6 +2115,7 @@ function pickMiddleCard(handIdx) {
   G.pile = [card];
   G.openSeven = card.n === '7' ? card.s : null;
   G.openSevenLevel = (card.n === '7') ? (card.level || 0) : 0;
+  { const lv = G.openSevenLevel; G._dumpMult = lv >= 3 ? 2 : lv >= 2 ? 1.5 : 1; }
   log(`🗺️ Do Where Labs On? You set ${card.n}${card.s} as the opening middle card.`, 'gold');
   if (G.openSeven) log(`⚡ OPEN 7! Middle is a 7${G.openSeven}. You may dump ${G.openSeven} cards.`, 'gold');
   pulseRelic('do_where_labs_on');
@@ -2293,11 +2318,26 @@ function stageableIndices() {
     return false;
   }
 
-  if (G._stagedMode === 'jack' || G._stagedMode === 'jackbonus') {
-    // Jacks and Aces are always stageable after a Jack.
-    // Non-Jack, non-Ace cards must match last.s.
+  if (G._stagedMode === 'jack') {
+    // Pure jack mode: J and A always legal. Other cards must match last.s.
     return G.hand
       .map((c, i) => (!stagedSet.has(i) && (c.n === 'J' || c.n === 'A' || suitMatches(c.s, last.s))) ? i : -1)
+      .filter(i => i !== -1);
+  }
+
+  if (G._stagedMode === 'jackbonus') {
+    // Bonus slot after Jack chain: J and A always legal.
+    // Other cards match suit OR number of the last non-Jack staged card
+    // (i.e. normal play rules relative to the card that consumed the Jack slot).
+    const lastNonJack = [...G.staged].reverse().map(i => G.hand[i]).find(c => c && c.n !== 'J');
+    const ref = lastNonJack || last; // fallback to last if somehow all Jacks
+    return G.hand
+      .map((c, i) => {
+        if (stagedSet.has(i)) return -1;
+        if (c.n === 'J' || c.n === 'A') return i;
+        if (suitMatches(c.s, ref.s) || c.n === ref.n) return i;
+        return -1;
+      })
       .filter(i => i !== -1);
   }
 
@@ -2385,14 +2425,16 @@ function modeAfterStaging(card, handIdx) {
   }
 
   if (prevMode === 'jackbonus') {
-    // Consuming a bonus slot — if more slots remain after this, stay in jackbonus
+    // A non-J/A card is consuming a bonus slot — decrement counter
+    if (card.n !== 'J' && card.n !== 'A') G._jackBonusSlots = Math.max(0, (G._jackBonusSlots || 0) - 1);
     if (card.n === 'J') return 'jack'; // another Jack resets to jack mode (and may grant more slots)
     if (card.n === '7') return 'dump';
-    if (card.n === 'A') return 'ace'; // Ace after Jack — only further Aces allowed
-    // Check for same-number stack before consuming another bonus slot
+    if (card.n === 'A') return 'ace';
+    // Check for same-number stack
     const copies2 = G.hand.filter((c, i) => i !== handIdx && !G.staged.includes(i) && c.n === card.n);
     if (copies2.length > 0) return 'samenum';
-    if (G._jackBonusSlots > 1) return 'jackbonus'; // more slots remaining
+    // If bonus slots still remain, allow normal-match continuation
+    if (G._jackBonusSlots > 0) return 'jackbonus';
     return 'single';
   }
 
@@ -2679,15 +2721,27 @@ function executeDumpFromStaged(ordered) {
     raw += bonus;
     log('🔥 Wildfire! Cards 4+ score ×2.', 'gold');
   }
-  // 7 L2/L3 dump score multiplier
-  const dumpLv = G.openSevenLevel || 0;
-  if (dumpLv >= 2) {
-    const dumpMult = dumpLv >= 3 ? 2 : 1.5;
-    raw = Math.round(raw * dumpMult);
-    log(`7 L${dumpLv}! Dump scores ×${dumpMult}.`, 'blue');
+  // 7 dump score multiplier — accumulated from all L2/L3 sevens in chain
+  const dumpMult1 = G._dumpMult || 1;
+  if (dumpMult1 > 1) {
+    raw = Math.round(raw * dumpMult1);
+    log(`7 Dump ×${dumpMult1}!`, 'blue');
   }
   applyScore(ordered, raw);
   log(`Dump: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
+
+  // 3-power exception: fire all Threes in the hand regardless of position
+  // (skip last card — fireLastCardPower handles it if it's a 3)
+  const threesFired = new Set();
+  for (let ti = 0; ti < ordered.length - 1; ti++) {
+    const tc = ordered[ti];
+    if (tc.n === '3' && (effectiveLevel(tc) >= 1)) {
+      const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
+      G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+      log(`3${ordered.length > 1 ? tc.s : ''} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
+      threesFired.add(ti);
+    }
+  }
 
   const last = ordered[ordered.length - 1];
   const _diDump = G.hand.length;
@@ -2735,6 +2789,15 @@ function commitMultiAce(declaredSuit) {
   closeModal();
   G.aceSuit = declaredSuit;
   log(`Ace declares ${declaredSuit}`, 'blue');
+  // L2/L3 Ace: draw extra cards after suit declaration
+  if (G.middle && G.middle.n === 'A') {
+    const aceLv = effectiveLevel(G.middle);
+    if (aceLv >= 2) {
+      const extraDraw = aceLv >= 3 ? 2 : 1;
+      const drawn = drawUp(extraDraw);
+      if (drawn > 0) log(`Ace L${aceLv}! Drew ${drawn} extra card${drawn !== 1 ? 's' : ''}. Hand: ${G.hand.length}`, 'blue');
+    }
+  }
   if (_aceContCallback) {
     const cb = _aceContCallback;
     _aceContCallback = null;
@@ -2774,6 +2837,19 @@ function executeChainFromStaged(ordered) {
   }
   applyScore(ordered, raw);
   log(`Chain: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
+
+  // 3-power exception: fire all Threes in the hand regardless of position
+  // (skip last card — fireLastCardPower handles it if it's a 3)
+  const threesFired = new Set();
+  for (let ti = 0; ti < ordered.length - 1; ti++) {
+    const tc = ordered[ti];
+    if (tc.n === '3' && (effectiveLevel(tc) >= 1)) {
+      const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
+      G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+      log(`3${ordered.length > 1 ? tc.s : ''} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
+      threesFired.add(ti);
+    }
+  }
 
   const last = ordered[ordered.length - 1];
   const _diChain = G.hand.length;
@@ -2887,6 +2963,61 @@ function executeSameNumberFromStaged(cards) {
     log(`Hands left: ${handsLeft()}`, 'dim');
     { drawUp(); updateHUD(); renderActions(); animateDealIn(_di8); checkRoundEnd(); }
     return;
+  } else if (num === '3') {
+    // Each 3 adds its free-relic chance independently
+    for (const three of cards) {
+      const lv = effectiveLevel(three);
+      if (lv >= 1) {
+        const pct = lv === 1 ? 3 : lv === 2 ? 6 : 9;
+        G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+        log(`3${cards.length > 1 ? three.s : ''} L${lv}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
+      }
+    }
+    const _di3 = G.hand.length;
+    G.handsUsed++;
+    log(`Hands left: ${handsLeft()}`, 'dim');
+    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di3); checkRoundEnd(); }
+    return;
+
+  } else if (num === '6') {
+    // Each 6 recovers discards independently
+    for (const six of cards) {
+      const lv = effectiveLevel(six);
+      if (lv >= 1) {
+        if (lv >= 3) {
+          G.discUsed = Math.max(-2, G.discUsed - 2);
+          log(`6${cards.length > 1 ? six.s : ''} L3! +2 extra discards (free: ${freeDiscsLeft()})`, 'blue');
+        } else {
+          const recover = lv === 1 ? 1 : 2;
+          const actual = Math.min(recover, G.discUsed);
+          G.discUsed = Math.max(0, G.discUsed - actual);
+          log(`6${cards.length > 1 ? six.s : ''} L${lv}! Recovered ${actual} discard${actual !== 1 ? 's' : ''} (free: ${freeDiscsLeft()})`, 'blue');
+        }
+      }
+    }
+    updateHUD();
+    const _di6 = G.hand.length;
+    G.handsUsed++;
+    log(`Hands left: ${handsLeft()}`, 'dim');
+    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di6); checkRoundEnd(); }
+    return;
+
+  } else if (num === '10') {
+    // Each 10 adds its surge bonus independently
+    for (const ten of cards) {
+      const lv = effectiveLevel(ten);
+      if (lv >= 1) {
+        const bonus = lv === 1 ? 100 : lv === 2 ? 200 : 300;
+        G.surgeBonus = (G.surgeBonus || 0) + bonus;
+        log(`10${cards.length > 1 ? ten.s : ''} L${lv}! +${bonus} pts to next hand (surge total: ${G.surgeBonus})`, 'blue');
+      }
+    }
+    const _di10 = G.hand.length;
+    G.handsUsed++;
+    log(`Hands left: ${handsLeft()}`, 'dim');
+    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di10); checkRoundEnd(); }
+    return;
+
   } else if (num !== 'J') {
     const _diOther = G.hand.length;
     fireLastCardPower(cards[cards.length - 1], cards, () => {
@@ -2930,6 +3061,13 @@ function playAce(srcSuit, declaredSuit) {
   log(`Declared suit: ${declaredSuit}`, 'gold');
   log(`Hands left: ${handsLeft()}`, 'dim');
   const _diAce = G.hand.length;
+  // L2/L3 Ace: draw extra cards before top-up
+  const aceLv = effectiveLevel(card);
+  if (aceLv >= 2) {
+    const extraDraw = aceLv >= 3 ? 2 : 1;
+    const drawn = drawUp(extraDraw);
+    if (drawn > 0) log(`Ace L${aceLv}! Drew ${drawn} extra card${drawn !== 1 ? 's' : ''}. Hand: ${G.hand.length}`, 'blue');
+  }
   drawUp();
   updateHUD(); renderActions();
   animateDealIn(_diAce);
@@ -3129,6 +3267,23 @@ function applyScore(cards, overrideTotal, opts = {}) {
     }
   }
 
+  // ── 5 passive: each 5 held in hand (not played) adds flat pts before multipliers
+  if (!opts.suppressSniper) {
+    const playedKeys = new Set(cards.map(c => c.n + c.s));
+    const heldFives = G.hand.filter(c => c.n === '5' && !playedKeys.has(c.n + c.s));
+    if (heldFives.length > 0) {
+      let fiveBonus = 0;
+      for (const five of heldFives) {
+        const flv = effectiveLevel(five);
+        if (flv >= 1) fiveBonus += flv === 1 ? 50 : flv === 2 ? 100 : 150;
+      }
+      if (fiveBonus > 0) {
+        raw += fiveBonus;
+        log(`5 Passive! ${heldFives.length} held Five${heldFives.length > 1 ? 's' : ''} +${fiveBonus} pts`, 'blue');
+      }
+    }
+  }
+
   // ── All additives are now in raw. Apply multipliers in sequence. ──
 
   // ── Hand-size bonus multiplier (3=×1.5, 5=×2, 7=×3, 10=×5)
@@ -3274,40 +3429,20 @@ function firePower(card, twosCount, cont) {
 
   // ── 3 (Peek) ─────────────────────────────────────────────────
   } else if (n === '3') {
-    const peekN = lv === 1 ? 2 : lv === 2 ? 4 : 5;
-    const cards = G.deck.slice(-peekN).reverse(); // top N
-    if (cards.length === 0) { log(`3 Peek — deck empty.`, 'dim'); done(); return; }
-    if (lv >= 3) {
-      // Show peek modal with option to take one to hand
-      showModal(`<h2 style="color:var(--gold)">3 ★★★ Peek</h2>
-        <p style="color:var(--dim);margin-bottom:8px">Top ${cards.length} cards. Tap one to take it into your hand.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0">
-          ${cards.map((c,i)=>`<div onclick="peekTakeCard(${i},${peekN})" style="cursor:pointer">${cardHTML(c,'','',false)}</div>`).join('')}
-        </div>
-        <button class="btn" onclick="closeModal(); const cb=G._peekDoneCallback; G._peekDoneCallback=null; if(cb)cb();">Done (keep order)</button>`);
-      G._peekDoneCallback = done;
-    } else {
-      // Show info modal — view only, then reorder at L2
-      const label = lv === 1 ? 'View only.' : 'Tap to reorder (first = next drawn).';
-      showModal(`<h2 style="color:var(--gold)">3 Peek${lv===2?' ★★':''}</h2>
-        <p style="color:var(--dim);margin-bottom:8px">Top ${cards.length} of deck. ${label}</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0">
-          ${cards.map((c,i)=>`<div style="cursor:${lv===2?'pointer':'default'};opacity:${lv===2?1:0.8}"
-            ${lv===2?`onclick="peekReorder(${i},${peekN})"`:''}>${cardHTML(c,'','',false)}</div>`).join('')}
-        </div>
-        <button class="btn primary" onclick="closeModal(); const cb=G._peekDoneCallback; G._peekDoneCallback=null; if(cb)cb();">Done</button>`);
-      G._peekDoneCallback = done;
-    }
+    // 3: adds chance of a free relic at end of round. Stacks with other 3s.
+    const pct = lv === 1 ? 3 : lv === 2 ? 6 : 9;
+    G._freeRelicChance = (G._freeRelicChance || 0) + pct;
+    log(`3 L${lv}! +${pct}% free relic chance this round (total: ${G._freeRelicChance}%).`, 'blue');
+    done();
 
   // ── 4 (Salvage) ──────────────────────────────────────────────
   } else if (n === '4') {
-    const count = lv === 1 ? 1 : lv === 2 ? 2 : 2;
-    const extraDraw = lv >= 3;
+    const count = lv === 1 ? 1 : lv === 2 ? 2 : 3;
+    const extraDraw = false; // L3 now returns up to 3 instead of 2+draw
     // 4s cannot salvage other 4s — prevents infinite hand loops with 8s
     const salvagePool = G.discardPile.map((c, i) => ({ c, i })).filter(x => x.c.n !== '4');
     if (salvagePool.length === 0) {
       log(`4 Salvage — no eligible cards in discard pile (4s cannot be salvaged).`, 'dim');
-      if (extraDraw) { drawUp(1); log(`4 L3: drew 1 from deck instead.`, 'blue'); }
       done(); return;
     }
     if (salvagePool.length <= count) {
@@ -3321,30 +3456,34 @@ function firePower(card, twosCount, cont) {
     } else {
       // Show selection modal — only show eligible (non-4) cards
       showModal(`<h2 style="color:var(--gold)">4 Salvage${lv>1?' ★'.repeat(lv):''}</h2>
-        <p style="color:var(--dim);margin-bottom:8px">Choose ${count} card${count>1?'s':''} to return from discard pile.</p>
+        <p style="color:var(--dim);margin-bottom:8px">Return up to ${count} card${count>1?'s':''} from discard pile.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0">
           ${salvagePool.map(x=>`<div onclick="salvageCard(${x.i})" style="cursor:pointer">${cardHTML(x.c,'','',false)}</div>`).join('')}
-        </div>`);
+        </div>
+        <button class="btn primary" onclick="salvageDone()" style="margin-top:8px;">Done ✓</button>`);
       G._salvageCount = count;
       G._salvageDone = done;
-      G._salvageExtra = extraDraw;
+      G._salvageExtra = false;
     }
 
-  // ── 5 (Tempo) ────────────────────────────────────────────────
+  // ── 5 (In-hand passive bonus) ───────────────────────────────
   } else if (n === '5') {
-    G.tempoActive = true;
-    G.tempoCount = lv >= 2 ? 2 : 1;
-    G.tempoBonusNext = lv >= 3 ? 100 : 0;
-    G._tempoSuit = card.s;
-    log(`5 Tempo L${lv}! Next ${G.tempoCount} ${card.s} card${G.tempoCount>1?'s cost':'  costs'} 0 hands.${lv>=3?' +100 pts next hand.':''}`, 'blue');
+    // 5 power is passive — bonus is applied in applyScore when 5 is held in hand
+    // (firePower is called when 5 itself is the played card, which doesn't trigger the passive)
     done();
 
   // ── 6 (Mend) ─────────────────────────────────────────────────
   } else if (n === '6') {
-    const recover = lv === 1 ? 1 : lv === 2 ? 2 : maxDiscs();
-    const actual = Math.min(recover, G.discUsed);
-    G.discUsed = Math.max(0, G.discUsed - actual);
-    log(`6 Mend L${lv}! Recovered ${actual} discard${actual!==1?'s':''}. Free discards: ${freeDiscsLeft()}`, 'blue');
+    if (lv >= 3) {
+      // L3: grant +2 extra discards beyond cap (by reducing discUsed below 0, effectively adding capacity)
+      G.discUsed = Math.max(-2, G.discUsed - 2);
+      log(`6 L3! +2 extra discards (free discards: ${freeDiscsLeft()})`, 'blue');
+    } else {
+      const recover = lv === 1 ? 1 : 2;
+      const actual = Math.min(recover, G.discUsed);
+      G.discUsed = Math.max(0, G.discUsed - actual);
+      log(`6 Mend L${lv}! Recovered ${actual} discard${actual!==1?'s':''}. Free discards: ${freeDiscsLeft()}`, 'blue');
+    }
     updateHUD();
     done();
 
@@ -3352,6 +3491,9 @@ function firePower(card, twosCount, cont) {
   } else if (n === '7') {
     G.openSeven = card.s;
     G.openSevenLevel = lv;
+    // Accumulate dump multiplier — each L2/L3 seven multiplies the total
+    const sevenFactor = lv >= 3 ? 2 : lv >= 2 ? 1.5 : 1;
+    G._dumpMult = (G._dumpMult || 1) * sevenFactor;
     done();
 
   // ── 8 ────────────────────────────────────────────────────────
@@ -3369,14 +3511,9 @@ function firePower(card, twosCount, cont) {
 
   // ── 9 (Reshuffle hand, draw fresh) ───────────────────────────
   } else if (n === '9') {
-    const drawCount = lv >= 2 ? 9 : 7;
-    const peekAfter = lv >= 3;
+    const drawCount = lv === 1 ? 7 : lv === 2 ? 8 : 9;
     log(`9 L${lv}! Reshuffling hand into deck, drawing ${drawCount}...`, 'blue');
     animateQueenShuffle(() => {
-      if (peekAfter && G.deck.length > 0) {
-        const top3 = G.deck.slice(-3).reverse();
-        log(`9 L3 Peek: top 3 of deck — ${top3.map(c=>c.n+c.s).join(', ')}`, 'blue');
-      }
       updateHUD(); renderActions(); done();
     }, drawCount);
 
@@ -3398,9 +3535,9 @@ function firePower(card, twosCount, cont) {
   } else if (n === 'Q') {
     const factor = G.relics.includes('blood_pact') ? 3 : 2;
     const mult = factor + G.crimsonBonus + (lv - 1); // L1=×2, L2=×3, L3=×4 (+ crimson stacks)
-    const turns = lv >= 3 ? 2 : 1;
-    // Queens stack additively: L1+L2 = ×2+×3 = ×5 (not ×6)
-    G.queenMult = (G.queenMult === 1 ? 0 : G.queenMult) + mult;
+    const turns = 1; // all queen levels persist for 1 hand only
+    // Queens stack multiplicatively: L1×L1 = ×4, L1×L2 = ×6, L3×L3 = ×16
+    G.queenMult = (G.queenMult || 1) * mult;
     G.queenMultTurns = Math.max(G.queenMultTurns, turns);
     if (G.relics.includes('crimson_tide')) {
       G.crimsonBonus++;
@@ -3412,7 +3549,7 @@ function firePower(card, twosCount, cont) {
       log(`🩸 Blood Pact! Queen ×${mult} — costs 1 extra hand (${handsLeft()} left)`, 'red');
       pulseRelic('blood_pact');
     } else {
-      log(`Queen L${lv}! Next ${turns > 1 ? turns + ' hands' : 'hand'} ×${G.queenMult}`, 'red');
+      log(`Queen L${lv}! Next hand ×${G.queenMult} (this queen: ×${mult})`, 'red');
     }
     updateHUD();
     done();
@@ -3427,13 +3564,8 @@ function firePower(card, twosCount, cont) {
   // ── 10 (Surge) ───────────────────────────────────────────────
   } else if (n === '10') {
     const bonus = lv === 1 ? 100 : lv === 2 ? 200 : 300;
-    const extraHand = lv >= 3;
     G.surgeBonus = (G.surgeBonus || 0) + bonus;
-    log(`10 Surge L${lv}! +${bonus} pts to next hand scored.${extraHand?' +1 hand.':''}`, 'blue');
-    if (extraHand) {
-      G.handsUsed -= 1;
-      updateHUD();
-    }
+    log(`10 Surge L${lv}! +${bonus} pts added to next hand scored.`, 'blue');
     done();
 
   } else {
@@ -3485,11 +3617,21 @@ function salvageCard(discIdx) {
     const count = G._salvageCount;
     const remainingPool = G.discardPile.map((c, i) => ({ c, i })).filter(x => x.c.n !== '4');
     document.querySelector('.modal').innerHTML = `<h2 style="color:var(--gold)">4 Salvage</h2>
-      <p style="color:var(--dim);margin-bottom:8px">Choose ${count} more card${count>1?'s':''} to return.</p>
+      <p style="color:var(--dim);margin-bottom:8px">Return up to ${count} more card${count>1?'s':''}.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0">
         ${remainingPool.map(x=>`<div onclick="salvageCard(${x.i})" style="cursor:pointer">${cardHTML(x.c,'','',false)}</div>`).join('')}
-      </div>`;
+      </div>
+      <button class="btn primary" onclick="salvageDone()" style="margin-top:8px;">Done ✓</button>`;
   }
+}
+
+function salvageDone() {
+  if (!G._salvageDone) return;
+  closeModal();
+  const cb = G._salvageDone; G._salvageDone = null;
+  G._salvageCount = 0;
+  if (cb) cb();
+  updateHUD(); renderActions();
 }
 
 // Shared helper: fly an array of DOM card elements into the deck widget, then call onComplete.
@@ -3699,12 +3841,11 @@ function executeDump() {
     log(`🔥 Wildfire! Cards 4+ score ×2.`, 'gold');
   }
 
-  // 7 L2/L3 dump score multiplier
-  const dumpLv = G.openSevenLevel || 0;
-  if (dumpLv >= 2) {
-    const dumpMult = dumpLv >= 3 ? 2 : 1.5;
-    raw = Math.round(raw * dumpMult);
-    log(`7 L${dumpLv}! Dump scores ×${dumpMult}.`, 'blue');
+  // 7 dump score multiplier — accumulated from all L2/L3 sevens in chain
+  const dumpMult2 = G._dumpMult || 1;
+  if (dumpMult2 > 1) {
+    raw = Math.round(raw * dumpMult2);
+    log(`7 Dump ×${dumpMult2}!`, 'blue');
   }
 
   applyScore(ordered, raw);
@@ -4015,6 +4156,19 @@ function endRound() {
     G.crownActive = false;
   }
 
+  // 3-power: roll free relic chance — if hit, show Lucky 3 splash before reward screen
+  if (G._freeRelicChance > 0) {
+    const roll = Math.random() * 100;
+    if (roll < G._freeRelicChance) {
+      // Generate 3 choices and show the Lucky 3 screen
+      G._lucky3Options = generateRewardRelics();
+      G._freeRelicChance = 0;
+      fireClearFlash();
+      showLucky3Screen();
+      return;
+    }
+    G._freeRelicChance = 0;
+  }
   fireClearFlash();
   openRewardScreen();
 }
@@ -4133,6 +4287,69 @@ function generateRewardRelics() {
     chosen.push(p);
   }
   return chosen;
+}
+
+function showLucky3Screen() {
+  showScreen('lucky-3-screen');
+  document.getElementById('lucky3-subtitle').textContent =
+    `Your 3s paid off! Choose a free relic.`;
+  renderLucky3Options();
+}
+
+function renderLucky3Options() {
+  const tierColour = { common:'var(--dim)', uncommon:'#7ec8a0', rare:'#e8943a', legendary:'#d4af37' };
+  const opts = G._lucky3Options || [];
+  const optionsEl = document.getElementById('lucky3-options');
+  const actionsEl = document.getElementById('lucky3-actions');
+
+  optionsEl.innerHTML = opts.map((r, i) => `
+    <div class="reward-relic-opt" onclick="pickLucky3Relic(${i})" style="max-width:140px;text-align:center;cursor:pointer;padding:12px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;"
+      onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div style="font-size:28px;margin-bottom:6px;">${r.art}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--cream);margin-bottom:4px;">${r.name}</div>
+      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:${tierColour[r.tier]||'var(--dim)'};margin-bottom:6px;">${r.tier}</div>
+      <div style="font-size:10px;color:var(--dim);line-height:1.5;">${r.desc}</div>
+    </div>`).join('');
+
+  // Reroll button if charges available
+  let actionsHtml = '';
+  if (G._rerollCharges > 0) {
+    actionsHtml += `<button class="btn" onclick="rerollLucky3()" style="color:var(--green);border-color:var(--green);">🎲 Re-roll (${G._rerollCharges} left)</button>`;
+  }
+  actionsEl.innerHTML = actionsHtml;
+}
+
+function rerollLucky3() {
+  if (G._rerollCharges <= 0) return;
+  G._rerollCharges--;
+  if (G.relics.includes('fuck_that') && G._fuckThatCharges > 0) {
+    G._fuckThatCharges--;
+    if (G._fuckThatCharges <= 0) {
+      const idx = G.relics.indexOf('fuck_that');
+      if (idx !== -1) G.relics.splice(idx, 1);
+      log('🎲 Fuck That exhausted — relic returned to pool.', 'dim');
+    }
+  }
+  log(`🎲 Lucky 3 re-rolled. ${G._rerollCharges} charge${G._rerollCharges !== 1 ? 's' : ''} remaining.`, 'gold');
+  G._lucky3Options = generateRewardRelics();
+  renderLucky3Options();
+}
+
+function pickLucky3Relic(idx) {
+  const r = (G._lucky3Options || [])[idx];
+  if (!r) return;
+  G._lucky3Options = null;
+  G.relics.push(r.key);
+  if (r.key === 'the_vault') G._vaultRoundsLeft = 3;
+  if (r.key === 'fuck_that') { G._fuckThatCharges += 3; G._rerollCharges += 3; }
+  if (r.key === 'double_jump') applyOnTheGear();
+  if (r.key === 'mirror_image') {
+    const before = G.deck.length;
+    G.deck = shuffle([...G.deck, ...G.deck.map(c => ({...c}))]);
+    log(`🪟 Mirror Image! Deck duplicated: ${before} → ${G.deck.length} cards.`, 'gold');
+  }
+  log(`🃏 Lucky 3! Gained free relic: ${r.name}`, 'gold');
+  openRewardScreen();
 }
 
 function openRewardScreen() {
@@ -4684,27 +4901,27 @@ const POWER_DESCRIPTIONS = {
   },
   '3': {
     0: 'No power.',
-    1: 'Peek at the top 2 cards of the deck.',
-    2: 'Peek at the top 4 cards and reorder them freely.',
-    3: 'Peek at the top 5 cards and take 1 into your hand.',
+    1: '+3% chance of a free relic at end of round. Stacks with other 3s played.',
+    2: '+6% chance of a free relic at end of round. Stacks with other 3s played.',
+    3: '+9% chance of a free relic at end of round. Stacks with other 3s played.',
   },
   '4': {
     0: 'No power.',
-    1: 'Salvage 1 card from your discard pile into your hand.',
-    2: 'Salvage 2 cards from your discard pile into your hand.',
-    3: 'Salvage 2 cards from your discard pile + draw 1 from deck.',
+    1: 'Return 1 card from your discard pile to your hand.',
+    2: 'Return up to 2 cards from your discard pile to your hand.',
+    3: 'Return up to 3 cards from your discard pile to your hand.',
   },
   '5': {
     0: 'No power.',
-    1: 'The next same-suit card you play costs 0 hands.',
-    2: 'The next 2 same-suit cards you play cost 0 hands.',
-    3: 'The next 2 same-suit cards cost 0 hands + the next hand scores +100 pts.',
+    1: 'Passive: while held in hand, each other card scored gains +50 pts (before multipliers).',
+    2: 'Passive: while held in hand, each other card scored gains +100 pts (before multipliers).',
+    3: 'Passive: while held in hand, each other card scored gains +150 pts (before multipliers).',
   },
   '6': {
     0: 'No power.',
     1: 'Recover 1 used free discard.',
     2: 'Recover 2 used free discards.',
-    3: 'Recover all used free discards.',
+    3: '+2 extra discards this round, regardless of the discard cap.',
   },
   '7': {
     0: 'Open a suit dump — chain cards of this suit. Only the last card fires its power.',
@@ -4721,26 +4938,26 @@ const POWER_DESCRIPTIONS = {
   '9': {
     0: 'No power.',
     1: 'Shuffle your hand into the deck and draw 7 fresh cards.',
-    2: 'Shuffle your hand into the deck and draw 9 fresh cards.',
-    3: 'Shuffle your hand, draw 9 fresh cards, then peek at the top 3 of the deck.',
+    2: 'Shuffle your hand into the deck and draw 8 fresh cards.',
+    3: 'Shuffle your hand into the deck and draw 9 fresh cards.',
   },
   '10': {
     0: 'No power.',
-    1: '+100 pts bonus added to your next scored hand.',
-    2: '+200 pts bonus added to your next scored hand.',
-    3: '+300 pts bonus to your next scored hand + grant +1 hand.',
+    1: '+100 pts added to your next scored hand.',
+    2: '+200 pts added to your next scored hand.',
+    3: '+300 pts added to your next scored hand.',
   },
   'J': {
     0: null,
     1: 'Free play — does not consume a hand.',
-    2: 'Free play + draw 1 card. Grants 1 bonus staging slot.',
-    3: 'Free play + draw 2 cards. Grants 2 bonus staging slots.',
+    2: 'Free play + draw 1 card. Grants 1 bonus staging slot after this Jack.',
+    3: 'Free play + draw 2 cards. Grants 2 bonus staging slots after this Jack.',
   },
   'Q': {
     0: 'No power.',
     1: 'The next hand you play scores ×2.',
     2: 'The next hand you play scores ×3.',
-    3: 'The next hand scores ×4, persisting for 2 hands.',
+    3: 'The next hand you play scores ×4.',
   },
   'K': {
     0: null,
