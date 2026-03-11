@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.11</title>
+<title>Dead Man's Switch v0.7.19</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -834,7 +834,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.11</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.19</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -884,7 +884,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.11</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.19</div>
     </div>
   </div>
 
@@ -953,7 +953,7 @@ body {
     <div style="font-size:28px;letter-spacing:10px;opacity:0.5;">♠ ♥ ♦ ♣</div>
     <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;color:var(--gold);letter-spacing:2px;text-align:center;">🃏 LUCKY THREE!</div>
     <div style="color:var(--dim);font-size:12px;letter-spacing:1px;text-align:center;" id="lucky3-subtitle"></div>
-    <div id="lucky3-options" style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:8px 0;"></div>
+    <div id="lucky3-options" style="width:100%;max-width:480px;margin:8px 0;"></div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;" id="lucky3-actions"></div>
   </div>
 </div>
@@ -1034,7 +1034,6 @@ const ALL_RELICS = [
   { key:'gamblers_chip',  tier:'uncommon', art:'🎲', name:"Gambler's Chip",    desc:'After each hand, one random card in your hand is always legal to play, regardless of the middle card.' },
   { key:'tin_star',       tier:'common', art:'⭐', name:'Tin Star',          desc:'Queens score +50 bonus points each.' },
   { key:'pack_rat',       tier:'common', art:'🐀', name:'Pack Rat',          desc:'Increases your maximum hand size by 4 (on top of the standard half-deck cap).' },
-  { key:'rabbit_foot',    tier:'common', art:'🐇', name:'Rabbit Foot',       desc:'When you draw the last card from the deck, draw one extra card.' },
   { key:'canteen',        tier:'common', art:'🎒', name:'Full House',        desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
 
   // ── UNCOMMON ($8 / sell $4) ──────────────────────────────────
@@ -1060,12 +1059,15 @@ const ALL_RELICS = [
   { key:'mirror_image',   tier:'rare', art:'🪟', name:'Mirror Image',           desc:'Immediately duplicates every card in your deck, hand, and discard pile. A 20-card deck becomes 40.' },
 
   // ── LEGENDARY ($18 / sell $9) ────────────────────────────────
+  { key:'dyscalculia', tier:'legendary', art:'🔢', name:'Dyscalculia', desc:'Every card scores exactly 250 base points, regardless of its number.' },
   { key:'philosophers_stone', tier:'legendary', art:'🪨', name:"Philosopher's Stone", desc:'Every card you play scores at least 100 pts, regardless of base value.' },
   { key:'ouroboros',      tier:'legendary', art:'🐍', name:'Hydra',             desc:'For every card you discard, draw 3 additional cards from the deck.' },
   { key:'the_void',       tier:'legendary', art:'🌌', name:'The Void',           desc:'Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.' },
   // commons
   { key:'odd_fit',        tier:'common',    art:'🧩', name:'Odd Fit',            desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
   // uncommon
+  { key:'rapid_shooter', tier:'uncommon', art:'🔫', name:'Rapid Shooter', desc:'After scoring a hand, each 2, 6, 8, and K in the hand fires its power again for free.' },
+  { key:'late_guy', tier:'uncommon', art:'⏰', name:'Late Guy', desc:'Hands scored with 3 or fewer hands remaining score double.' },
   { key:'do_where_labs_on', tier:'uncommon', art:'🗺️', name:'Do Where Labs On?', desc:'At the start of each round, play the first middle card yourself from your hand. You score no points for it.' },
   // rares
   { key:'cairds',          tier:'rare',      art:'🃏', name:'Cunts got cairds?', desc:'You may now pick UP TO 2 cards from the Add and Upgrade reward screens each time.' },
@@ -1195,16 +1197,6 @@ function drawUp(n) {
       G.hand.push(G.deck.pop());
       drawn++;
     }
-    // Rabbit Foot: draw one extra if we emptied the deck
-    if (G.relics.includes('rabbit_foot') && deckBefore > 0 && G.deck.length === 0 && drawn > 0 && G.hand.length < handCap()) {
-      tryEclipse();
-      if (G.deck.length > 0) {
-        G.hand.push(G.deck.pop());
-        drawn++;
-        log('🐇 Rabbit Foot! Drew 1 extra card on empty deck.', 'gold');
-        pulseRelic('rabbit_foot');
-      }
-    }
     // Gambler's Chip: after every top-up, assign a new forced-legal card
     if (G.relics && G.relics.includes('gamblers_chip') && G.hand.length > 0) {
       const idx = Math.floor(Math.random() * G.hand.length);
@@ -1276,7 +1268,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.11 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.19 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1534,6 +1526,11 @@ function calcPreviewScore(cards) {
     let sc = BASE_SCORES[c.n] || 0;
     if (c.n === 'A' && G.relics.includes('dead_mans_hand')) sc = 200;
     raw += sc;
+  }
+
+  // Dyscalculia: every card scores exactly 250 base points
+  if (G.relics.includes('dyscalculia')) {
+    raw = cards.length * 250;
   }
 
   // Philosopher's Stone: minimum 100 per card
@@ -2704,7 +2701,7 @@ function executeDumpFromStaged(ordered) {
 
   if (G.relics.includes('wildfire') && ordered.length > 3) {
     let bonus = 0;
-    for (let i = 3; i < ordered.length; i++) bonus += BASE_SCORES[ordered[i].n];
+    for (let i = 3; i < ordered.length; i++) bonus += G.relics.includes('dyscalculia') ? 250 : BASE_SCORES[ordered[i].n];
     raw += bonus;
     log('🔥 Wildfire! Cards 4+ score ×2.', 'gold');
   }
@@ -2717,24 +2714,26 @@ function executeDumpFromStaged(ordered) {
   applyScore(ordered, raw);
   log(`Dump: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
 
-  // 3-power exception: fire all Threes in the hand regardless of position
-  // (skip last card — fireLastCardPower handles it if it's a 3)
-  const threesFired = new Set();
-  for (let ti = 0; ti < ordered.length - 1; ti++) {
-    const tc = ordered[ti];
-    if (tc.n === '3' && (effectiveLevel(tc) >= 1)) {
+  // 3-power exception + Rapid Shooter: fire qualifying non-last cards before the last card's power
+  // (skip last card — fireLastCardPower handles it)
+  const nonLast = ordered.slice(0, -1);
+  for (let ti = 0; ti < nonLast.length; ti++) {
+    const tc = nonLast[ti];
+    if (tc.n === '3' && effectiveLevel(tc) >= 1) {
       const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
       G._freeRelicChance = (G._freeRelicChance || 0) + pct;
-      log(`3${ordered.length > 1 ? tc.s : ''} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
-      threesFired.add(ti);
+      log(`3${tc.s} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
     }
   }
+  fireRapidShooter(nonLast);
 
   const last = ordered[ordered.length - 1];
   const _diDump = G.hand.length;
   fireLastCardPower(last, ordered, () => {
     const isJack = last.n === 'J';
-    if (!isJack) { G.handsUsed++; log(`Hands left: ${handsLeft()}`, 'dim'); }
+    const isEight = last.n === '8';
+    if (!isJack && !isEight) { G.handsUsed++; log(`Hands left: ${handsLeft()}`, 'dim'); }
+    else if (!isJack) { log(`Hands left: ${handsLeft()}`, 'dim'); } // 8 already adjusted handsUsed in firePower
     { drawUp(); updateHUD(); renderActions(); animateDealIn(_diDump); checkRoundEnd(); }
   });
 }
@@ -2817,23 +2816,25 @@ function executeChainFromStaged(ordered) {
   if (G.relics.includes('wildfire') && suitRun > 3) {
     let bonus = 0;
     const suitCards = ordered.filter(c => c.s === firstSuit);
-    for (let i = 3; i < suitCards.length; i++) bonus += BASE_SCORES[suitCards[i].n];
+    for (let i = 3; i < suitCards.length; i++) bonus += G.relics.includes('dyscalculia') ? 250 : BASE_SCORES[suitCards[i].n];
     raw += bonus;
     log('🔥 Wildfire! Same-suit cards 4+ score ×2.', 'gold');
   }
   applyScore(ordered, raw);
   log(`Chain: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
 
-  // 3-power exception: fire all Threes in the hand regardless of position
+  // 3-power exception + Rapid Shooter: fire qualifying non-last cards before the last card's power
   // (skip last card — fireLastCardPower handles it if it's a 3)
-  for (let ti = 0; ti < ordered.length - 1; ti++) {
-    const tc = ordered[ti];
+  const nonLast = ordered.slice(0, -1);
+  for (let ti = 0; ti < nonLast.length; ti++) {
+    const tc = nonLast[ti];
     if (tc.n === '3' && effectiveLevel(tc) >= 1) {
       const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
       G._freeRelicChance = (G._freeRelicChance || 0) + pct;
       log(`3${tc.s} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
     }
   }
+  fireRapidShooter(nonLast);
 
   // Trailing same-number stack: if the chain ends with 2+ cards of the same number,
   // fire each card's power independently (matches executeSameNumberFromStaged behaviour).
@@ -2927,9 +2928,12 @@ function executeChainFromStaged(ordered) {
   const wasDump = ordered[0].n === '7' || ordered.some(c => c.n === '7');
   fireLastCardPower(last, ordered, () => {
     const isJack = last.n === 'J';
-    if (!isJack) {
+    const isEight = last.n === '8';
+    if (!isJack && !isEight) {
       if (!consumeTempoIfApplicable(ordered)) G.handsUsed++;
       log(`Hands left: ${handsLeft()}`, 'dim');
+    } else if (!isJack) {
+      log(`Hands left: ${handsLeft()}`, 'dim'); // 8 already adjusted handsUsed in firePower
     }
     const finish = () => { drawUp(); updateHUD(); renderActions(); animateDealIn(_diChain); checkRoundEnd(); };
     // If an Ace was part of the chain, ask for suit declaration after scoring
@@ -3171,6 +3175,22 @@ function consumeTempoIfApplicable(cards) {
 }
 
 // ══════════════════════════════════════════════════════════════ PLAY SINGLE
+// ── Rapid Shooter: fire 2/6/8/K powers again for every such card in played hand
+function fireRapidShooter(nonLastCards) {
+  // Fires 2/6/8/K powers for cards that are NOT the last card in a multi-card hand.
+  // The last card always fires via fireLastCardPower — Rapid Shooter only fills in the rest.
+  if (!G.relics.includes('rapid_shooter')) return;
+  const RS_TARGETS = new Set(['2','6','8','K']);
+  const targets = nonLastCards.filter(c => RS_TARGETS.has(c.n) && effectiveLevel(c) >= 1);
+  if (targets.length === 0) return;
+  log(`🔫 Rapid Shooter! Non-last powers: ${targets.map(c=>c.n+c.s).join(', ')}`, 'gold');
+  pulseRelic('rapid_shooter');
+  for (const c of targets) {
+    firePower(c, 1); // all four are synchronous — safe to fire in a loop
+  }
+  updateHUD();
+}
+
 function doPlaySingle(card) {
   const idx = G.hand.findIndex(c => cardKey(c) === cardKey(card));
   if (idx === -1) return;
@@ -3390,6 +3410,13 @@ function applyScore(cards, overrideTotal, opts = {}) {
     pulseRelic('sniper');
   }
 
+  // ── Relic: Late Guy — hands with 3 or fewer remaining score double
+  if (G.relics.includes('late_guy') && !opts.suppressSniper && handsLeft() <= 3) {
+    raw = raw * 2;
+    log(`⏰ Late Guy! ${handsLeft()} hand${handsLeft()!==1?'s':''} left — ×2 score`, 'gold');
+    pulseRelic('late_guy');
+  }
+
   // ── Diminishing Returns boss (applied after relic mults, before queen)
   const mult = G.queenMult;
   let dimMult = 1;
@@ -3509,18 +3536,16 @@ function firePower(card, twosCount, cont) {
       log(`4 Salvage — no eligible cards in discard pile (4s cannot be salvaged).`, 'dim');
       done(); return;
     }
-    if (salvagePool.length <= count) {
-      // Take all available eligible cards
-      const indices = salvagePool.map(x => x.i).sort((a, b) => b - a); // remove highest indices first
-      const taking = indices.map(i => G.discardPile.splice(i, 1)[0]);
-      taking.forEach(c => G.hand.push(c));
-      log(`4 Salvage! Returned ${taking.map(c=>c.n+c.s).join(', ')} to hand.`, 'blue');
-      if (extraDraw) { drawUp(1); }
+    if (count === 1 && salvagePool.length === 1) {
+      // Only one card available and only one pick — auto-take, no modal needed
+      const taking = G.discardPile.splice(salvagePool[0].i, 1)[0];
+      if (G.hand.length < handCap()) G.hand.push(taking);
+      log(`4 Salvage! Returned ${taking.n}${taking.s} to hand.`, 'blue');
       done();
     } else {
-      // Show selection modal — only show eligible (non-4) cards
+      // Always show modal when count > 1 or there are choices to make
       showModal(`<h2 style="color:var(--gold)">4 Salvage${lv>1?' ★'.repeat(lv):''}</h2>
-        <p style="color:var(--dim);margin-bottom:8px">Return up to ${count} card${count>1?'s':''} from discard pile.</p>
+        <p style="color:var(--dim);margin-bottom:8px">Return up to ${count} card${count>1?'s':''} from discard pile (${salvagePool.length} available).</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0">
           ${salvagePool.map(x=>`<div onclick="salvageCard(${x.i})" style="cursor:pointer">${cardHTML(x.c,'','',false)}</div>`).join('')}
         </div>
@@ -3927,8 +3952,10 @@ function executeDump() {
   // Only last card fires power (with proper continuation)
   const last = ordered[ordered.length - 1];
   const _diExecDump = G.hand.length;
+  fireRapidShooter(ordered.slice(0, -1));
   const afterDump = () => {
-    G.handsUsed++;
+    const isEightLast = last.n === '8';
+    if (!isEightLast) G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
     drawUp();
     updateHUD(); renderActions();
@@ -4375,14 +4402,18 @@ function renderLucky3Options() {
   const optionsEl = document.getElementById('lucky3-options');
   const actionsEl = document.getElementById('lucky3-actions');
 
-  optionsEl.innerHTML = opts.map((r, i) => `
-    <div class="reward-relic-opt" onclick="pickLucky3Relic(${i})" style="max-width:140px;text-align:center;cursor:pointer;padding:12px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;"
-      onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
-      <div style="font-size:28px;margin-bottom:6px;">${r.art}</div>
-      <div style="font-size:12px;font-weight:700;color:var(--cream);margin-bottom:4px;">${r.name}</div>
-      <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:${tierColour[r.tier]||'var(--dim)'};margin-bottom:6px;">${r.tier}</div>
-      <div style="font-size:10px;color:var(--dim);line-height:1.5;">${r.desc}</div>
-    </div>`).join('');
+  // Use the same row layout as the relic reward screen
+  optionsEl.innerHTML = `<div class="reward-relics-grid" style="width:100%;max-width:480px;">` +
+    opts.map((r, i) => `
+      <div class="reward-relic-opt" onclick="pickLucky3Relic(${i})">
+        <div class="reward-relic-art">${r.art}</div>
+        <div class="reward-relic-info">
+          <div class="reward-relic-name">${r.name}</div>
+          <div class="reward-relic-tier" style="color:${tierColour[r.tier]||'var(--dim)'};">${r.tier}</div>
+          <div class="reward-relic-desc">${r.desc}</div>
+        </div>
+      </div>`).join('') +
+    `</div>`;
 
   // Reroll button if charges available
   let actionsHtml = '';
@@ -4573,7 +4604,7 @@ function chooseRewardAction(actionId) {
     const wasBoss = isBossRound(G.roundNum);
     cards = generateAddCards(wasBoss);
     const levelLabel = ['', '★ L1', '★★ L2', '★★★ L3'];
-    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Add ${G.relics.includes('cairds') ? 'up to 2 cards' : 'a card'} to your deck</div>
+    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Add ${G.relics.includes('cairds') ? 'up to ' + cairdsMax() + ' cards' : 'a card'} to your deck</div>
       <div class="reward-cards-grid" id="reward-cards-grid">`;
     cards.forEach((c, i) => {
       html += `<div class="reward-card-opt" id="rcopt-${i}" onclick="rewardSelectCard(${i})">
@@ -4618,7 +4649,7 @@ function chooseRewardAction(actionId) {
     const levelColour = ['var(--dim)', 'rgba(180,180,210,0.9)', 'var(--gold)'];
     const nextColours = ['rgba(180,180,210,0.9)', 'var(--gold)', 'rgba(100,160,240,1)'];
     const nextLabels  = ['★', '★★', '★★★'];
-    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;">Upgrade ${G.relics.includes('cairds') ? 'up to 2 cards' : 'a card'} in your deck (→ next level)</div>
+    let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:4px;">Upgrade ${G.relics.includes('cairds') ? 'up to ' + cairdsMax() + ' cards' : 'a card'} in your deck (→ next level)</div>
       <div class="reward-cards-grid" id="reward-cards-grid">`;
     cards.forEach((c, i) => {
       const lv = c.level || 0;
@@ -4725,6 +4756,11 @@ function rewardConfirmSubtract() {
   renderRewardActions();
 }
 
+function cairdsMax() {
+  // Each copy of cairds (via logbook) adds 2 more picks
+  return 2 * Math.max(1, G.relics.filter(k => k === 'cairds').length);
+}
+
 function rewardSelectCard(idx) {
   const action = G._pendingRewardAction;
   const cairdsActive = G.relics.includes('cairds') && (action === 'add' || action === 'upgrade');
@@ -4740,7 +4776,7 @@ function rewardSelectCard(idx) {
       const opt = document.getElementById(`rcopt-${idx}`);
       if (opt) opt.classList.remove('selected');
     } else {
-      if (G._cairdsSelected.length >= 2) {
+      if (G._cairdsSelected.length >= cairdsMax()) {
         // Replace oldest selection
         const old = G._cairdsSelected.shift();
         const oldOpt = document.getElementById(`rcopt-${old}`);
