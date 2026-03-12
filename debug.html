@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.19_DEBUG</title>
+<title>Dead Man's Switch v0.7.29</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -21,7 +21,6 @@
   --border: rgba(201,168,76,0.2);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── DEBUG OVERLAY ── */
 #debug-bar {
@@ -103,7 +102,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 50px;
+  padding-top: 50px; // padding for debug
 }
 
 /* ── SCREENS ── */
@@ -519,6 +518,41 @@ body {
 }
 .card.dragging { opacity: 0.35 !important; }
 
+/* ── JACK BONUS SLOT GHOST ── */
+.jack-bonus-slot {
+  width: 64px;
+  height: 90px;
+  border: 2px dashed rgba(100,160,240,0.55);
+  border-radius: 4px;
+  background: rgba(100,160,240,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  pointer-events: none;
+  flex-shrink: 0;
+  animation: bonus-slot-pulse 2s ease-in-out infinite;
+}
+.jack-bonus-slot .slot-icon {
+  font-size: 18px;
+  opacity: 0.55;
+  color: rgba(100,160,240,0.8);
+}
+.jack-bonus-slot .slot-label {
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(100,160,240,0.55);
+  text-align: center;
+  line-height: 1.3;
+}
+@keyframes bonus-slot-pulse {
+  0%   { border-color: rgba(100,160,240,0.35); box-shadow: none; }
+  50%  { border-color: rgba(100,160,240,0.75); box-shadow: 0 0 10px 2px rgba(100,160,240,0.18); }
+  100% { border-color: rgba(100,160,240,0.35); box-shadow: none; }
+}
+
 /* ── PILE STACK ── */
 .pile-stack {
   position: relative;
@@ -901,7 +935,7 @@ body {
   <span class="dbg-sep">|</span>
   <button onclick="dbgOpenCardPicker()">＋ Add Card</button>
   <button onclick="dbgOpenRelicPicker()">＋ Add Relic</button>
-  <button onclick="dbgSkipToRound()">⏭ Set Round</button>
+  <button onclick="dbgOpenSetRound()">⏭ Set Round</button>
   <button onclick="dbgFillHands()">♾ Max Hands</button>
   <button onclick="dbgFillDiscards()">♾ Max Discards</button>
   <span class="dbg-sep">|</span>
@@ -927,7 +961,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.19</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.29</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -977,7 +1011,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.19</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.29</div>
     </div>
   </div>
 
@@ -1111,61 +1145,58 @@ const ROUND_MAXHANDS = new Array(25).fill(8);  // flat 8 throughout
 const ROUND_MAXDISCS = new Array(25).fill(4);  // flat 4 throughout
 
 const ALL_RELICS = [
-  // ── COMMON ($5 / sell $2) ────────────────────────────────────
-  { key:'the_fool',       tier:'uncommon', art:'🃏', name:'The Fool',         desc:'Your first hand played each round scores ×2.' },
-  { key:'dead_mans_hand', tier:'common', art:'💀', name:"Dead Man's Hand",   desc:'Aces score 200 pts instead of 110.' },
-  { key:'daisy_chain',    tier:'common', art:'🔗', name:'Daisy Chain',       desc:'In any multi-card hand, each card after the first adds +25 flat bonus.' },
-  { key:'penny_pincher',  tier:'common', art:'💰', name:'Penny Pincher',     desc:'Each unused free discard at round end upgrades a random L0 card in your deck to L1.' },
-  { key:'swift_hand',     tier:'common', art:'⚡', name:'Swift Hand',        desc:'Gain +1 extra hand next round for every 3 unused hands this round (max +2).' },
-  { key:'dusty_tome',     tier:'common', art:'📖', name:'Dusty Tome',        desc:'Jacks score +50 bonus points each.' },
-  { key:'heart_of_gold',  tier:'common', art:'💛', name:'Heart of Gold',     desc:'Hearts score +20 bonus points each.' },
-  { key:'ace_in_hole',    tier:'common', art:'🕳️', name:'Ace in the Hole',   desc:'After each successful round, a random Ace is added to your deck.' },
-  { key:'trashman',       tier:'common', art:'🗑️', name:'Trashman',          desc:'+1 free discard per round. Can be purchased multiple times — each copy adds another +1.' },
-  { key:'club_house',     tier:'common', art:'♣️', name:'Club House',        desc:'Clubs score +20 bonus points each.' },
-  { key:'spade_work',     tier:'common', art:'♠️', name:'Spade Work',        desc:'Spades score +20 bonus points each.' },
-  { key:'diamond_eye',    tier:'common', art:'♦️', name:'Diamond Eye',       desc:'Diamonds score +20 bonus points each.' },
-  { key:'gamblers_chip',  tier:'uncommon', art:'🎲', name:"Gambler's Chip",    desc:'After each hand, one random card in your hand is always legal to play, regardless of the middle card.' },
-  { key:'tin_star',       tier:'common', art:'⭐', name:'Tin Star',          desc:'Queens score +50 bonus points each.' },
-  { key:'pack_rat',       tier:'common', art:'🐀', name:'Pack Rat',          desc:'Increases your maximum hand size by 4 (on top of the standard half-deck cap).' },
-  { key:'canteen',        tier:'common', art:'🎒', name:'Full House',        desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
+  // ── COMMON ───────────────────────────────────────────────────
+  { key:'dead_mans_hand', tier:'common',   art:'💀', name:"Dead Man's Hand",        desc:'Aces score 200 pts instead of 110.' },
+  { key:'daisy_chain',    tier:'common',   art:'🔗', name:'Daisy Chain',             desc:'In any multi-card hand, each card after the first adds +25 flat bonus.' },
+  { key:'penny_pincher',  tier:'common',   art:'💰', name:'Penny Pincher',           desc:'Each unused free discard at round end upgrades a random L0 card in your deck to L1.' },
+  { key:'swift_hand',     tier:'common',   art:'⚡', name:'Swift Hand',              desc:'Gain +1 extra hand next round for every 3 unused hands this round (max +2).' },
+  { key:'dusty_tome',     tier:'common',   art:'📖', name:'Dusty Tome',              desc:'Jacks score +50 bonus points each.' },
+  { key:'heart_of_gold',  tier:'common',   art:'💛', name:'Heart of Gold',           desc:'Hearts score +20 bonus points each.' },
+  { key:'ace_in_hole',    tier:'common',   art:'🕳️', name:'Ace in the Hole',         desc:'After each successful round, a random Ace is added to your deck.' },
+  { key:'trashman',       tier:'common',   art:'🗑️', name:'Trashman',                desc:'+1 free discard per round. Can be purchased multiple times — each copy adds another +1.' },
+  { key:'club_house',     tier:'common',   art:'♣️', name:'Club House',              desc:'Clubs score +20 bonus points each.' },
+  { key:'spade_work',     tier:'common',   art:'♠️', name:'Spade Work',              desc:'Spades score +20 bonus points each.' },
+  { key:'diamond_eye',    tier:'common',   art:'♦️', name:'Diamond Eye',             desc:'Diamonds score +20 bonus points each.' },
+  { key:'tin_star',       tier:'common',   art:'⭐', name:'Tin Star',                desc:'Queens score +50 bonus points each.' },
+  { key:'pack_rat',       tier:'common',   art:'🐀', name:'Pack Rat',                desc:'Increases your maximum hand size by 4 (on top of the standard half-deck cap).' },
+  { key:'canteen',        tier:'common',   art:'🎒', name:'Full House',              desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
+  { key:'the_anvil',      tier:'common',   art:'⚒️', name:'The Anvil',               desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
+  { key:'odd_fit',        tier:'common',   art:'🧩', name:'Odd Fit',                 desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
 
-  // ── UNCOMMON ($8 / sell $4) ──────────────────────────────────
-  { key:'sniper',         tier:'rare', art:'🎯', name:'Sniper',            desc:'Single-card hands score ×3.' },
-  { key:'blood_pact',     tier:'uncommon', art:'🩸', name:'Blood Pact',        desc:'Queens multiply by ×3 instead of ×2, but cost 1 extra hand when played.' },
-  { key:'ward',           tier:'uncommon', art:'🪬', name:'Ward',              desc:'Once per round, if you would run out of hands, prevent it and draw 2 cards instead.' },
-  { key:'chain_reaction', tier:'uncommon', art:'💥', name:'Chain Reaction',    desc:'Playing multiple 2s together multiplies their draw values instead of adding them. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn.' },
-  { key:'mirror_shard',   tier:'uncommon', art:'🪞', name:'Mirror Shard',      desc:'The first card you discard each round does not count against your free discard limit.' },
-  { key:'night_market',   tier:'uncommon', art:'🌙', name:'Night Market',      desc:'See 8 cards instead of 6 for Add, Remove, and Upgrade choices in the reward screen.' },
-  { key:'the_anvil',      tier:'common',   art:'⚒️', name:'The Anvil',         desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
-  { key:'foxs_gambit',    tier:'uncommon', art:'🦊', name:"Fox's Gambit",      desc:'Each Jack played draws 1 extra card.' },
-  { key:'white_rab',      tier:'uncommon', art:'🐰', name:'White Rab',         desc:'Same-number cards in a hand multiply the score: 2 matching = ×2, 3 = ×3, and so on. Applies even within a larger multi-card play.' },
-  { key:'double_jump',    tier:'uncommon', art:'⚙️', name:'On The Gear',        desc:'On acquisition: 5 random cards in your deck are upgraded by one level (max L3).' },
-  { key:'fuck_that',      tier:'uncommon', art:'🎲', name:'Fuck That',          desc:'3 charges. Re-roll any reward screen option (add/remove/upgrade/relic). Charges do not replenish. When all 3 are used, the relic is destroyed and returns to the pool.' },
+  // ── UNCOMMON ─────────────────────────────────────────────────
+  { key:'the_fool',       tier:'uncommon', art:'🃏', name:'The Fool',                desc:'Your first hand played each round scores ×2.' },
+  { key:'blood_pact',     tier:'uncommon', art:'🩸', name:'Blood Pact',              desc:'Queens stack multiplicatively instead of additively (3×L3 = ×64), but each Queen costs 1 extra hand.' },
+  { key:'ward',           tier:'uncommon', art:'🪬', name:'Ward',                    desc:'Once per round, if you would run out of hands, prevent it and draw 2 cards instead.' },
+  { key:'chain_reaction', tier:'uncommon', art:'💥', name:'Chain Reaction',          desc:'Playing multiple 2s together multiplies their draw values instead of adding them. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn.' },
+  { key:'mirror_shard',   tier:'uncommon', art:'🪞', name:'Mirror Shard',            desc:'The first card you discard each round does not count against your free discard limit.' },
+  { key:'night_market',   tier:'uncommon', art:'🌙', name:'Night Market',            desc:'See 8 cards instead of 6 for Add, Remove, and Upgrade choices in the reward screen.' },
+  { key:'foxs_gambit',    tier:'uncommon', art:'🦊', name:"Fox's Gambit",           desc:'Each Jack played draws 1 extra card.' },
+  { key:'white_rab',      tier:'uncommon', art:'🐰', name:'White Rab',               desc:'Same-number cards in a hand multiply the score: 2 matching = ×2, 3 = ×3, and so on. Applies even within a larger multi-card play.' },
+  { key:'double_jump',    tier:'uncommon', art:'⚙️', name:'On The Gear',             desc:'On acquisition: 5 random cards in your deck are upgraded by one level (max L3).' },
+  { key:'fuck_that',      tier:'uncommon', art:'🎲', name:'Fuck That',               desc:'3 charges. Re-roll any reward screen option (add/remove/upgrade/relic). Charges do not replenish. When all 3 are used, the relic is destroyed and returns to the pool.' },
+  { key:'gamblers_chip',  tier:'uncommon', art:'🎲', name:"Gambler's Chip",         desc:'After each hand, one random card in your hand is always legal to play, regardless of the middle card.' },
+  { key:'rapid_shooter',  tier:'uncommon', art:'🔫', name:'Rapid Shooter',           desc:'In multi-card hands, 2s, 6s, 8s, and Ks that are not the last card also fire their power.' },
+  { key:'late_guy',       tier:'uncommon', art:'⏰', name:'Late Guy',                desc:'Hands scored with 3 or fewer hands remaining score double.' },
+  { key:'do_where_labs_on', tier:'uncommon', art:'🗺️', name:'Do Where Labs On?',    desc:'At the start of each round, play the first middle card yourself from your hand. You score no points for it.' },
 
-  // ── RARE ($12 / sell $6) ─────────────────────────────────────
-  { key:'wildfire',       tier:'rare', art:'🔥', name:'Wildfire',          desc:'In a suit dump or chain, every card after the 3rd scores double.' },
-  { key:'the_crown',      tier:'rare', art:'👑', name:'The Crown',         desc:"If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%." },
-  { key:'eclipse',        tier:'rare', art:'🌑', name:'Eclipse',           desc:'Once per round, when you draw from an empty deck, the discard pile is reshuffled back in.' },
-  { key:'crimson_tide',   tier:'legendary', art:'🌊', name:'Crimson Tide',      desc:'Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds).' },
-  { key:'the_vault',      tier:'rare', art:'🏦', name:'The Vault',         desc:'For the next 3 rounds after acquisition, you get 3 reward choices instead of 2.' },
-  { key:'logbook',        tier:'rare', art:'📒', name:"Can I See Your Logbook?", desc:"Choose one relic you already own — its effect is duplicated. Stackable relics like Trashman add another stack." },
-  { key:'mirror_image',   tier:'rare', art:'🪟', name:'Mirror Image',           desc:'Immediately duplicates every card in your deck, hand, and discard pile. A 20-card deck becomes 40.' },
+  // ── RARE ─────────────────────────────────────────────────────
+  { key:'sniper',         tier:'rare',     art:'🎯', name:'Sniper',                  desc:'Single-card hands score ×3.' },
+  { key:'wildfire',       tier:'rare',     art:'🔥', name:'Wildfire',                desc:'In a suit dump or chain, every card after the 3rd scores double.' },
+  { key:'the_crown',      tier:'rare',     art:'👑', name:'The Crown',               desc:"If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%." },
+  { key:'eclipse',        tier:'rare',     art:'🌑', name:'Eclipse',                 desc:'Once per round, when you draw from an empty deck, the discard pile is reshuffled back in.' },
+  { key:'the_vault',      tier:'rare',     art:'🏦', name:'The Vault',               desc:'For the next 3 rounds after acquisition, you get 3 reward choices instead of 2.' },
+  { key:'logbook',        tier:'rare',     art:'📒', name:"Can I See Your Logbook?", desc:"Choose one relic you already own — its effect is duplicated. Stackable relics like Trashman add another stack." },
+  { key:'mirror_image',   tier:'rare',     art:'🪟', name:'Mirror Image',            desc:'Immediately duplicates every card in your deck, hand, and discard pile. A 20-card deck becomes 40.' },
+  { key:'cairds',         tier:'rare',     art:'🃏', name:'Cunts got cairds?',        desc:'You may now pick UP TO 2 cards from the Add and Upgrade reward screens each time.' },
+  { key:'colorblind',     tier:'rare',     art:'🎨', name:'Colorblind',              desc:'Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit.' },
+  { key:'on_yersel_hen',  tier:'rare',     art:'👑', name:'On Yersel Hen!',          desc:'Each hand you play scores +100 for every unplayed Queen currently held in your hand.' },
 
-  // ── LEGENDARY ($18 / sell $9) ────────────────────────────────
-  { key:'dyscalculia', tier:'legendary', art:'🔢', name:'Dyscalculia', desc:'Every card scores exactly 250 base points, regardless of its number.' },
+  // ── LEGENDARY ────────────────────────────────────────────────
   { key:'philosophers_stone', tier:'legendary', art:'🪨', name:"Philosopher's Stone", desc:'Every card you play scores at least 100 pts, regardless of base value.' },
-  { key:'ouroboros',      tier:'legendary', art:'🐍', name:'Hydra',             desc:'For every card you discard, draw 3 additional cards from the deck.' },
-  { key:'the_void',       tier:'legendary', art:'🌌', name:'The Void',           desc:'Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.' },
-  // commons
-  { key:'odd_fit',        tier:'common',    art:'🧩', name:'Odd Fit',            desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
-  // uncommon
-  { key:'rapid_shooter', tier:'uncommon', art:'🔫', name:'Rapid Shooter', desc:'After scoring a hand, each 2, 6, 8, and K in the hand fires its power again for free.' },
-  { key:'late_guy', tier:'uncommon', art:'⏰', name:'Late Guy', desc:'Hands scored with 3 or fewer hands remaining score double.' },
-  { key:'do_where_labs_on', tier:'uncommon', art:'🗺️', name:'Do Where Labs On?', desc:'At the start of each round, play the first middle card yourself from your hand. You score no points for it.' },
-  // rares
-  { key:'cairds',          tier:'rare',      art:'🃏', name:'Cunts got cairds?', desc:'You may now pick UP TO 2 cards from the Add and Upgrade reward screens each time.' },
-  { key:'colorblind',     tier:'rare',      art:'🎨', name:'Colorblind',         desc:'Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit.' },
-  { key:'on_yersel_hen',  tier:'rare',      art:'👑', name:'On Yersel Hen!',     desc:'Each hand you play scores +100 for every unplayed Queen currently held in your hand.' },
+  { key:'ouroboros',      tier:'legendary', art:'🐍', name:'Hydra',                  desc:'For every card you discard, draw 2 additional cards from the deck.' },
+  { key:'the_void',       tier:'legendary', art:'🌌', name:'The Void',               desc:'Your deck never truly runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.' },
+  { key:'crimson_tide',   tier:'legendary', art:'🌊', name:'Crimson Tide',           desc:'Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds).' },
+  { key:'dyscalculia',    tier:'legendary', art:'🔢', name:'Dyscalculia',            desc:'Every card scores exactly 250 base points, regardless of its number.' },
 ];
 
 // ══════════════════════════════════════════════════════════════ GAME STATE
@@ -1361,7 +1392,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.19 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.29 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1436,13 +1467,35 @@ function updateHUD() {
   // Pile stack — show up to 5 cards fanned
   renderPileStack();
 
-  // Match hint
+  // Match hint — updates to reflect active staging mode
   if (G.middle) {
     const eff = G.aceSuit || G.middle.s;
-    document.getElementById('match-hint').innerHTML =
-      `Match <b>${eff}</b> suit<br>or <b>${G.middle.n}</b> number` +
-      (G.aceSuit ? `<br><span style="color:var(--gold)">(declared: ${G.aceSuit})</span>` : '') +
-      (G.openSeven ? `<br><span style="color:var(--gold)">⚡ Open 7 active</span>` : '');
+    let hintHTML = '';
+    if (G._stagedMode === 'jack') {
+      const lastStaged = G.staged.length > 0 ? G.hand[G.staged[G.staged.length - 1]] : null;
+      const js = lastStaged ? lastStaged.s : eff;
+      hintHTML = `<span style="color:#88aadd">Jack chain<br>Match <b>${js}</b> suit</span>` +
+        (G._jackBonusSlots > 0 ? `<br><span style="color:rgba(100,160,240,0.7);font-size:9px">+${G._jackBonusSlots} bonus slot${G._jackBonusSlots > 1 ? 's' : ''}</span>` : '');
+    } else if (G._stagedMode === 'jackbonus') {
+      const lastNonJack = [...G.staged].reverse().map(i => G.hand[i]).find(c => c && c.n !== 'J');
+      const ref = lastNonJack ? lastNonJack : G.hand[G.staged[G.staged.length - 1]];
+      hintHTML = `<span style="color:#88aadd">Bonus slot<br>Match <b>${ref ? ref.s : eff}</b> or <b>${ref ? ref.n : '?'}</b></span>` +
+        (G._jackBonusSlots > 1 ? `<br><span style="color:rgba(100,160,240,0.7);font-size:9px">+${G._jackBonusSlots - 1} more after</span>` : '');
+    } else if (G._stagedMode === 'ace') {
+      hintHTML = `<span style="color:var(--gold)">Ace chain<br>Aces only</span>`;
+    } else if (G._stagedMode === 'samenum') {
+      const lastStaged2 = G.staged.length > 0 ? G.hand[G.staged[G.staged.length - 1]] : null;
+      hintHTML = `Stack <b>${lastStaged2 ? lastStaged2.n : '?'}</b>s`;
+    } else if (G._stagedMode === 'dump' || G._stagedMode === 'dumpjack' || G._stagedMode === 'dumpjackbonus') {
+      const lastStagedSeven = [...G.staged].reverse().map(i => G.hand[i]).find(c => c && c.n === '7');
+      const dumpSuit = lastStagedSeven ? lastStagedSeven.s : (G.openSeven || eff);
+      hintHTML = `<span style="color:var(--gold)">7 Dump<br>Match <b>${dumpSuit}</b></span>`;
+    } else {
+      hintHTML = `Match <b>${eff}</b> suit<br>or <b>${G.middle.n}</b> number` +
+        (G.aceSuit ? `<br><span style="color:var(--gold)">(declared: ${G.aceSuit})</span>` : '') +
+        (G.openSeven ? `<br><span style="color:var(--gold)">⚡ Open 7 active</span>` : '');
+    }
+    document.getElementById('match-hint').innerHTML = hintHTML;
   } else {
     document.getElementById('match-hint').innerHTML =
       `<span style="color:var(--gold);font-size:11px;">🗺️ Pick a card<br>as middle</span>`;
@@ -1499,13 +1552,13 @@ function renderPlayZone() {
   const zone = document.getElementById('play-zone');
   const hint = document.getElementById('play-zone-hint');
   const cards = stagedCards();
+  // Always clear both staged cards AND ghost slots before re-rendering
+  zone.querySelectorAll('.card, .jack-bonus-slot').forEach(e => e.remove());
   if (cards.length === 0) {
     hint.style.display = '';
-    zone.querySelectorAll('.card').forEach(e => e.remove());
     return;
   }
   hint.style.display = 'none';
-  zone.querySelectorAll('.card').forEach(e => e.remove());
   cards.forEach((card, i) => {
     const div = document.createElement('div');
     const lv = card.level || 0;
@@ -1524,6 +1577,22 @@ function renderPlayZone() {
     div.addEventListener('click', () => unstageCard(i));
     zone.appendChild(div);
   });
+
+  // Ghost bonus slot indicators — shown when _jackBonusSlots > 0
+  // One ghost per remaining bonus slot, showing what kind of card is accepted
+  if ((G._stagedMode === 'jackbonus' || G._stagedMode === 'jack') && G._jackBonusSlots > 0) {
+    // Determine the reference card for the bonus slot hint
+    const lastNonJack = [...G.staged].reverse().map(i => G.hand[i]).find(c => c && c.n !== 'J');
+    const lastStaged = G.staged.length > 0 ? G.hand[G.staged[G.staged.length - 1]] : null;
+    const ref = lastNonJack || lastStaged;
+    const hintText = ref ? `${ref.s} suit<br>or ${ref.n}` : 'suit or<br>number';
+    for (let s = 0; s < G._jackBonusSlots; s++) {
+      const ghost = document.createElement('div');
+      ghost.className = 'jack-bonus-slot';
+      ghost.innerHTML = `<div class="slot-icon">🃏</div><div class="slot-label">${hintText}</div>`;
+      zone.appendChild(ghost);
+    }
+  }
 }
 
 function updateScorePreview() {
@@ -1722,6 +1791,9 @@ function calcPreviewScore(cards) {
 
   // Sniper: single-card hand ×3
   if (isSingleCard && G.relics.includes('sniper')) raw *= 3;
+
+  // Late Guy: ×2 when 3 or fewer hands remaining
+  if (G.relics.includes('late_guy') && handsLeft() <= 3) raw *= 2;
 
   // Diminishing boss: each hand scores progressively less (floor 30%)
   if (G.activeBoss && G.activeBoss.key === 'diminishing') {
@@ -2474,8 +2546,8 @@ function modeAfterStaging(card, handIdx) {
   // When a Jack is staged, grant bonus free slots based on level
   if (card.n === 'J') {
     const lv = effectiveLevel(card);
-    const bonus = lv >= 3 ? 2 : lv >= 2 ? 1 : 0;
-    if (bonus > 0) G._jackBonusSlots = (G._jackBonusSlots || 0) + bonus;
+    const bonus = lv >= 3 ? 2 : lv >= 1 ? 1 : 0; // L1=1, L2=1, L3=2
+    if (bonus > 0) G._jackBonusSlots = bonus; // assign — only last Jack's slots count
   }
 
   if (G.staged.length === 0) {
@@ -2495,11 +2567,13 @@ function modeAfterStaging(card, handIdx) {
     if (card.n === 'J') return 'jack';
     if (card.n === '7') return 'dump';
     if (card.n === 'A') return 'ace'; // Ace after Jack — only further Aces allowed
-    // Check for same-number stack before consuming a bonus slot
-    const copies1 = G.hand.filter((c, i) => i !== handIdx && !G.staged.includes(i) && c.n === card.n);
-    if (copies1.length > 0) return 'samenum';
-    // Bonus slot card after a jack — if slots remain, allow same-suit continuation
-    if (G._jackBonusSlots > 0) return 'jackbonus';
+    // This card consumes a bonus slot. Never return 'samenum' here — jackbonus already
+    // allows suit-OR-number which is strictly better, and samenum would wrongly lock
+    // stageability to number-only (causing e.g. same-number cards to block other-suit matches).
+    if (G._jackBonusSlots > 0) {
+      G._jackBonusSlots = Math.max(0, G._jackBonusSlots - 1);
+      return G._jackBonusSlots > 0 ? 'jackbonus' : 'single';
+    }
     return 'single';
   }
 
@@ -2509,10 +2583,7 @@ function modeAfterStaging(card, handIdx) {
     if (card.n === 'J') return 'jack'; // another Jack resets to jack mode (and may grant more slots)
     if (card.n === '7') return 'dump';
     if (card.n === 'A') return 'ace';
-    // Check for same-number stack
-    const copies2 = G.hand.filter((c, i) => i !== handIdx && !G.staged.includes(i) && c.n === card.n);
-    if (copies2.length > 0) return 'samenum';
-    // If bonus slots still remain, allow normal-match continuation
+    // Never return 'samenum' here — same reason as prevMode=jack above.
     if (G._jackBonusSlots > 0) return 'jackbonus';
     return 'single';
   }
@@ -2714,6 +2785,9 @@ function _executeCommit(staged) {
     G.middle = j;
     G.aceSuit = null;
     applyScore([j], undefined, { suppressSniper: true });
+    // Fire Jack power (draw for L2/L3). firePower is synchronous for Jacks —
+    // no modal or animation delay — so calling it inline here is safe.
+    firePower(j, 1, () => {});
     log(`Jack — hand not consumed.`, 'dim');
   }
 
@@ -3280,7 +3354,13 @@ function fireRapidShooter(nonLastCards) {
   log(`🔫 Rapid Shooter! Non-last powers: ${targets.map(c=>c.n+c.s).join(', ')}`, 'gold');
   pulseRelic('rapid_shooter');
   for (const c of targets) {
+    const _diRS = G.hand.length; // snapshot before power fires
     firePower(c, 1); // all four are synchronous — safe to fire in a loop
+    // 2s and Ks draw cards — animate them in immediately
+    if ((c.n === '2' || c.n === 'K') && G.hand.length > _diRS) {
+      updateHUD(); renderActions();
+      animateDealIn(_diRS);
+    }
   }
   updateHUD();
 }
@@ -3343,6 +3423,13 @@ function applyScore(cards, overrideTotal, opts = {}) {
   }
   const isMultiCard = cards.length > 1;
   const isSingleCard = cards.length === 1;
+
+  // ── Relic: Dyscalculia — every card scores exactly 250 base points
+  if (G.relics.includes('dyscalculia')) {
+    raw = cards.length * 250;
+    log(`🔢 Dyscalculia! ${cards.length} card${cards.length !== 1 ? 's' : ''} × 250 = ${raw}`, 'gold');
+    pulseRelic('dyscalculia');
+  }
 
   // ── Relic: Philosopher's Stone — minimum 100 pts per card
   if (G.relics.includes('philosophers_stone')) {
@@ -3709,7 +3796,7 @@ function firePower(card, twosCount, cont) {
       pulseRelic('foxs_gambit');
     }
     if (lv >= 2) {
-      const drawn = drawUp(lv >= 3 ? 2 : 1);
+      const drawn = drawUp(1); // L2 and L3 both draw 1
       log(`Jack L${lv}! Drew ${drawn}. Hand: ${G.hand.length}`, 'blue');
     }
     done();
@@ -4145,7 +4232,7 @@ function discardCard(i) {
   closeModal();
   const card = G.hand[i];
 
-  // Hydra: draws 3 additional cards after each discard
+  // Hydra: draws 2 additional cards after each discard
 
   // Determine cost
   const freeLeft = freeDiscsLeft();
@@ -4178,9 +4265,9 @@ function discardCard(i) {
     if (G.deck.length > 0) {
       G.hand.push(G.deck.pop());
     }
-    // Hydra: draw 3 additional cards on every discard
+    // Hydra: draw 2 additional cards on every discard
     if (G.relics.includes('ouroboros')) {
-      const drawn = drawUp(3);
+      const drawn = drawUp(2);
       if (drawn > 0) log(`🐍 Hydra! Drew ${drawn} additional card${drawn !== 1 ? 's' : ''}.`, 'gold');
       pulseRelic('ouroboros');
     }
@@ -5191,9 +5278,9 @@ const POWER_DESCRIPTIONS = {
   },
   'J': {
     0: null,
-    1: 'Free play — does not consume a hand.',
-    2: 'Free play + draw 1 card. Grants 1 bonus staging slot after this Jack.',
-    3: 'Free play + draw 2 cards. Grants 2 bonus staging slots after this Jack.',
+    1: 'Free play — does not consume a hand. Grants 1 bonus staging slot.',
+    2: 'Free play + draw 1 card. Grants 1 bonus staging slot.',
+    3: 'Free play + draw 1 card. Grants 2 bonus staging slots.',
   },
   'Q': {
     0: 'No power.',
@@ -5664,7 +5751,9 @@ const DBG_LEVEL_LABELS = ['L0 (white)', 'L1 (steel)', 'L2 (gold)', 'L3 (blue)'];
 const DBG_LEVEL_CLASSES = ['level-0', 'level-1', 'level-2', 'level-3'];
 const DBG_TIER_COLOURS = { common: '#6a6058', uncommon: '#7ec8a0', rare: '#e8943a', legendary: '#d4af37' };
 
-let _dbgSelN = null, _dbgSelS = null, _dbgSelLv = 0;
+let _dbgSelN = null, _dbgSelS = null, _dbgSelLv = 0, _dbgSelQty = 1;
+let _dbgRelicTier = null; // null = show all tiers
+let _dbgRoundNum = 1, _dbgBossOverride = null; // 'none' = force no boss, key string = force that boss
 
 function dbgStatus(msg) {
   const el = document.getElementById('dbg-status');
@@ -5676,7 +5765,7 @@ function dbgCloseModal() {
 }
 
 function dbgOpenCardPicker() {
-  _dbgSelN = null; _dbgSelS = null; _dbgSelLv = 0;
+  _dbgSelN = null; _dbgSelS = null; _dbgSelLv = 0; _dbgSelQty = 1;
   renderDbgCardPicker();
   document.getElementById('debug-modal-overlay').classList.add('active');
 }
@@ -5692,8 +5781,12 @@ function renderDbgCardPicker() {
   const levelGrid = [0,1,2,3].map(lv =>
     `<div class="dbg-chip ${DBG_LEVEL_CLASSES[lv]}${_dbgSelLv===lv?' selected':''}" onclick="dbgSelLv(${lv})">${DBG_LEVEL_LABELS[lv]}</div>`
   ).join('');
+  const qtyGrid = [1,2,3,4,5,6,7,8,9,10].map(q =>
+    `<div class="dbg-chip${_dbgSelQty===q?' selected':''}" onclick="dbgSelQty(${q})">${q}</div>`
+  ).join('');
 
   const canAdd = _dbgSelN && _dbgSelS;
+  const qtyLabel = _dbgSelQty > 1 ? ` ×${_dbgSelQty}` : '';
   document.getElementById('debug-modal-body').innerHTML = `
     <h2>🃏 ADD CARD TO HAND</h2>
     <div class="dbg-section-label">Number</div>
@@ -5702,30 +5795,41 @@ function renderDbgCardPicker() {
     <div class="dbg-grid">${suitGrid}</div>
     <div class="dbg-section-label">Level</div>
     <div class="dbg-grid">${levelGrid}</div>
+    <div class="dbg-section-label">Quantity</div>
+    <div class="dbg-grid">${qtyGrid}</div>
     <button id="dbg-card-confirm" style="display:${canAdd?'block':'none'}"
       onclick="dbgAddCard()">
-      Add ${_dbgSelN||'?'}${_dbgSelS||'?'} ${DBG_LEVEL_LABELS[_dbgSelLv]} to hand
+      Add ${_dbgSelN||'?'}${_dbgSelS||'?'} ${DBG_LEVEL_LABELS[_dbgSelLv]}${qtyLabel} to hand
     </button>`;
 }
 
 function dbgSelN(n) { _dbgSelN = n; renderDbgCardPicker(); }
 function dbgSelS(s) { _dbgSelS = s; renderDbgCardPicker(); }
 function dbgSelLv(lv) { _dbgSelLv = lv; renderDbgCardPicker(); }
+function dbgSelQty(q) { _dbgSelQty = q; renderDbgCardPicker(); }
 
 function dbgAddCard() {
   if (!_dbgSelN || !_dbgSelS) return;
   if (!G || !G.hand) { dbgStatus('No active game state'); return; }
-  const card = { n: _dbgSelN, s: _dbgSelS, level: _dbgSelLv };
-  if (G.hand.length >= handCap()) {
-    dbgStatus(`Hand full (cap: ${handCap()}) — card NOT added`); return;
+  const qty = _dbgSelQty || 1;
+  let added = 0;
+  for (let i = 0; i < qty; i++) {
+    if (G.hand.length >= handCap()) break;
+    G.hand.push({ n: _dbgSelN, s: _dbgSelS, level: _dbgSelLv });
+    added++;
   }
-  G.hand.push(card);
+  if (added === 0) {
+    dbgStatus(`Hand full (cap: ${handCap()}) — no cards added`); return;
+  }
   updateHUD(); renderActions();
-  dbgStatus(`Added ${_dbgSelN}${_dbgSelS} L${_dbgSelLv} to hand`);
+  const skipped = qty - added;
+  const skipNote = skipped > 0 ? ` (${skipped} skipped — hand full)` : '';
+  dbgStatus(`Added ${added}× ${_dbgSelN}${_dbgSelS} L${_dbgSelLv}${skipNote}`);
   dbgCloseModal();
 }
 
 function dbgOpenRelicPicker() {
+  _dbgRelicTier = null;
   renderDbgRelicPicker('');
   document.getElementById('debug-modal-overlay').classList.add('active');
   setTimeout(() => document.getElementById('dbg-relic-search')?.focus(), 50);
@@ -5733,9 +5837,11 @@ function dbgOpenRelicPicker() {
 
 function renderDbgRelicPicker(filter) {
   const q = filter.toLowerCase();
-  const relics = ALL_RELICS.filter(r =>
-    !filter || r.name.toLowerCase().includes(q) || r.key.includes(q) || r.tier.includes(q)
-  );
+  const relics = ALL_RELICS.filter(r => {
+    const tierOk = !_dbgRelicTier || r.tier === _dbgRelicTier;
+    const textOk = !filter || r.name.toLowerCase().includes(q) || r.key.includes(q);
+    return tierOk && textOk;
+  });
   const rows = relics.map(r => {
     const col = DBG_TIER_COLOURS[r.tier] || '#6a6058';
     const owned = G && G.relics && G.relics.includes(r.key);
@@ -5749,11 +5855,33 @@ function renderDbgRelicPicker(filter) {
     </div>`;
   }).join('') || '<div style="color:#6a6058;font-size:11px;padding:8px">No relics match.</div>';
 
+  const tiers = ['common','uncommon','rare','legendary'];
+  const tierBtns = tiers.map(t => {
+    const col = DBG_TIER_COLOURS[t];
+    const active = _dbgRelicTier === t;
+    return `<button onclick="dbgSetRelicTier('${t}')" style="
+      font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;cursor:pointer;
+      border:1px solid ${active ? col : '#3a2020'};border-radius:3px;background:${active ? col+'22' : 'transparent'};
+      color:${active ? col : '#6a6058'};font-family:inherit;">${t}</button>`;
+  });
+  const allBtn = `<button onclick="dbgSetRelicTier(null)" style="
+    font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;cursor:pointer;
+    border:1px solid ${!_dbgRelicTier ? '#cc3333' : '#3a2020'};border-radius:3px;
+    background:${!_dbgRelicTier ? '#3a101022' : 'transparent'};
+    color:${!_dbgRelicTier ? '#cc3333' : '#6a6058'};font-family:inherit;">all</button>`;
+
   document.getElementById('debug-modal-body').innerHTML = `
     <h2>💎 ADD RELIC</h2>
-    <input id="dbg-relic-search" type="text" placeholder="Search by name or tier…"
+    <input id="dbg-relic-search" type="text" placeholder="Search by name…"
       value="${filter}" oninput="renderDbgRelicPicker(this.value)">
+    <div style="display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;">${allBtn}${tierBtns.join('')}</div>
     <div>${rows}</div>`;
+}
+
+function dbgSetRelicTier(tier) {
+  _dbgRelicTier = tier;
+  const search = document.getElementById('dbg-relic-search');
+  renderDbgRelicPicker(search ? search.value : '');
 }
 
 function dbgAddRelic(key) {
@@ -5763,19 +5891,93 @@ function dbgAddRelic(key) {
   G.relics.push(key);
   updateHUD(); renderActions();
   dbgStatus(`Added relic: ${r.name}`);
-  // Re-render in place so search state is preserved and "owned" updates
+  // Re-render in place so search/tier state is preserved and "owned" updates
   const search = document.getElementById('dbg-relic-search');
   renderDbgRelicPicker(search ? search.value : '');
 }
 
-function dbgSkipToRound() {
-  const input = prompt('Jump to round (1–24):', G ? G.roundNum : 1);
-  const r = parseInt(input);
-  if (isNaN(r) || r < 1 || r > 24) { dbgStatus('Invalid round number'); return; }
+function dbgOpenSetRound() {
+  _dbgRoundNum = G ? G.roundNum : 1;
+  _dbgBossOverride = null;
+  renderDbgSetRound();
+  document.getElementById('debug-modal-overlay').classList.add('active');
+}
+
+function renderDbgSetRound() {
+  const roundBtns = Array.from({length: 24}, (_, i) => {
+    const r = i + 1;
+    const isBoss = [3,6,9,12,15,18,21,24].includes(r);
+    const sel = _dbgRoundNum === r;
+    return `<div class="dbg-chip${sel?' selected':''}${isBoss?' level-2':''}"
+      onclick="dbgSetRound(${r})" title="${isBoss?'Boss round':''}">${r}${isBoss?'⚔':''}</div>`;
+  }).join('');
+
+  const BOSS_LIST = typeof ALL_BOSSES !== 'undefined' ? ALL_BOSSES : [];
+  const bossOpts = [
+    { key: null,   label: '(default)',   desc: 'Use normal schedule / no boss' },
+    { key: 'none', label: '✗ No boss',   desc: 'Force non-boss round' },
+    ...BOSS_LIST.map(b => ({ key: b.key, label: `${b.art} ${b.name}`, desc: b.rule || '' }))
+  ].map(opt => {
+    const sel = _dbgBossOverride === opt.key;
+    const col = sel ? '#cc3333' : '#3a2020';
+    return `<div class="dbg-relic-row${sel?' selected':''}" onclick="dbgSetBossOverride('${opt.key}')"
+      style="${sel?'border-color:#cc3333;background:#2a1010;':''}" >
+      <div class="dbg-relic-info">
+        <div class="dbg-relic-name" style="${sel?'color:#e8d08a':''}">${opt.label}</div>
+        <div style="font-size:10px;color:#6a6058;margin-top:2px;line-height:1.4">${opt.desc}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const canGo = _dbgRoundNum >= 1 && _dbgRoundNum <= 24;
+  document.getElementById('debug-modal-body').innerHTML = `
+    <h2>⏭ SET ROUND</h2>
+    <div class="dbg-section-label">Round (⚔ = boss)</div>
+    <div class="dbg-grid" style="margin-bottom:14px">${roundBtns}</div>
+    <div class="dbg-section-label" style="margin-bottom:6px">Boss override</div>
+    <div style="margin-bottom:12px">${bossOpts}</div>
+    <button id="dbg-card-confirm" style="display:${canGo?'block':'none'}"
+      onclick="dbgCommitSetRound()">Go to round ${_dbgRoundNum}</button>`;
+}
+
+function dbgSetRound(r) {
+  _dbgRoundNum = r;
+  renderDbgSetRound();
+}
+
+function dbgSetBossOverride(key) {
+  // key is a string from onclick — 'null' string means default, 'none' means force no boss
+  _dbgBossOverride = (key === 'null' || key === null) ? null : key;
+  renderDbgSetRound();
+}
+
+function dbgCommitSetRound() {
   if (!G) { dbgStatus('No active game state'); return; }
+  const r = _dbgRoundNum;
+  if (isNaN(r) || r < 1 || r > 24) { dbgStatus('Invalid round number'); return; }
   G.roundNum = r;
+  // Apply boss override to bossSchedule before startRound reads it
+  if (!G.bossSchedule) G.bossSchedule = {};
+  if (_dbgBossOverride === 'none') {
+    // Force no boss: remove this round from schedule
+    delete G.bossSchedule[r];
+  } else if (_dbgBossOverride !== null) {
+    // Force a specific boss
+    const bossTemplate = ALL_BOSSES.find(b => b.key === _dbgBossOverride);
+    if (bossTemplate) {
+      const entry = { ...bossTemplate };
+      if (entry.key === 'cursed_number') {
+        const eligible = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        entry.cursedNumber = eligible[Math.floor(Math.random() * eligible.length)];
+        entry.rule = `All ${entry.cursedNumber}s are treated as L0 this round.`;
+      }
+      G.bossSchedule[r] = entry;
+    }
+  }
+  // null = use existing schedule as-is
   startRound();
-  dbgStatus(`Jumped to round ${r}`);
+  dbgCloseModal();
+  dbgStatus(`Jumped to round ${r}${_dbgBossOverride === 'none' ? ' (no boss)' : _dbgBossOverride ? ` (boss: ${_dbgBossOverride})` : ''}`);
 }
 
 function dbgFillHands() {
