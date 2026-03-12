@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.29</title>
+<title>Dead Man's Switch v0.7.30</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -961,7 +961,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.29</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.30</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1011,7 +1011,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.29</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.30</div>
     </div>
   </div>
 
@@ -1392,7 +1392,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.29 — Game Log`,
+    `DEAD MAN'S SWITCH v0.7.30 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `Round: ${G.roundNum}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2047,7 +2047,7 @@ function assignBossRounds() {
     const entry = { ...boss };
     // Resolve dynamic fields
     if (boss.key === 'cursed_number') {
-      const eligible = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+      const eligible = ['2','3','4','5','6','7','8','9','10','J','Q','K'];
       entry.cursedNumber = eligible[Math.floor(Math.random() * eligible.length)];
       entry.rule = `All ${entry.cursedNumber}s are treated as L0 this round.`;
     }
@@ -2443,7 +2443,10 @@ function stagedCards() {
   return G.staged.map(i => G.hand[i]);
 }
 
+//
 // Returns the hand indices that are currently stageable.
+//
+
 function stageableIndices() {
   const stagedSet = new Set(G.staged);
 
@@ -2544,11 +2547,15 @@ function stageableIndices() {
 //   'jack'    — last card was a Jack; next can be Jack or same-suit card
 //   'single'  — no further cards allowed
 function modeAfterStaging(card, handIdx) {
+
   // When a Jack is staged, grant bonus free slots based on level
   if (card.n === 'J') {
     const lv = effectiveLevel(card);
     const bonus = lv >= 3 ? 2 : lv >= 1 ? 1 : 0; // L1=1, L2=1, L3=2
     if (bonus > 0) G._jackBonusSlots = bonus; // assign — only last Jack's slots count
+    if (lv === 0) { //prevent Jack power from firing when L0, such as for Hex boss
+      return 'samenum';
+    }
   }
 
   if (G.staged.length === 0) {
@@ -2844,67 +2851,6 @@ function commitAce(declaredSuit) {
   G._pendingAce = null;
   G.staged = [];
   playAce(card.s, declaredSuit, card); // pass full card to preserve level
-}
-
-function executeDumpFromStaged(ordered) {
-  G.openSeven = null; // consume the flag regardless
-
-  // Remove from hand
-  for (const c of ordered) {
-    const idx = G.hand.findIndex(x => cardKey(x) === cardKey(c));
-    if (idx !== -1) G.hand.splice(idx, 1);
-    G.discardPile.push(c);
-  }
-
-  G.pile.push(G.middle);
-  G.middle = ordered[ordered.length - 1];
-  G.aceSuit = null;
-
-  // Score
-  let raw = 0;
-  for (const c of ordered) {
-    let sc = BASE_SCORES[c.n];
-    if (c.n === 'A' && G.relics.includes('dead_mans_hand')) sc = 200;
-    raw += sc;
-  }
-
-  if (G.relics.includes('wildfire') && ordered.length > 3) {
-    let bonus = 0;
-    for (let i = 3; i < ordered.length; i++) bonus += G.relics.includes('dyscalculia') ? 250 : BASE_SCORES[ordered[i].n];
-    raw += bonus;
-    log('🔥 Wildfire! Cards 4+ score ×2.', 'gold');
-  }
-  // 7 dump score multiplier — accumulated from all L2/L3 sevens in chain
-  const dumpMult1 = G._dumpMult || 1;
-  if (dumpMult1 > 1) {
-    raw = Math.round(raw * dumpMult1);
-    log(`7 Dump ×${dumpMult1}!`, 'blue');
-  }
-  applyScore(ordered, raw);
-  log(`Dump: ${ordered.map(c=>c.n+c.s).join(' → ')}`, 'dim');
-
-  // 3-power exception + Rapid Shooter: fire qualifying non-last cards before the last card's power
-  // (skip last card — fireLastCardPower handles it)
-  const nonLast = ordered.slice(0, -1);
-  for (let ti = 0; ti < nonLast.length; ti++) {
-    const tc = nonLast[ti];
-    if (tc.n === '3' && effectiveLevel(tc) >= 1) {
-      const pct = effectiveLevel(tc) === 1 ? 3 : effectiveLevel(tc) === 2 ? 6 : 9;
-      G._freeRelicChance = (G._freeRelicChance || 0) + pct;
-      log(`3${tc.s} L${effectiveLevel(tc)}! +${pct}% free relic chance (total: ${G._freeRelicChance}%)`, 'blue');
-    }
-  }
-  fireRapidShooter(nonLast);
-
-  const last = ordered[ordered.length - 1];
-  const _diDump = G.hand.length;
-  fireLastCardPower(last, ordered, () => {
-    const isJack = last.n === 'J';
-    const isEight = last.n === '8';
-    if (!isJack && !isEight) { G.handsUsed++; log(`Hands left: ${handsLeft()}`, 'dim'); }
-    else if (!isJack) { log(`Hands left: ${handsLeft()}`, 'dim'); } // 8 already adjusted handsUsed in firePower
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_diDump); checkRoundEnd(); }
-  });
 }
 
 // Fires the final card's power in a multi-card play.
@@ -3700,7 +3646,7 @@ function firePower(card, twosCount, cont) {
     log(`Drew ${drawn}. Hand: ${G.hand.length}`, 'dim');
     done();
 
-  // ── 3 (Peek) ─────────────────────────────────────────────────
+  // ── 3 (Lucky Three) ─────────────────────────────────────────────────
   } else if (n === '3') {
     // 3: adds chance of a free relic at end of round. Stacks with other 3s.
     const pct = lv === 1 ? 3 : lv === 2 ? 6 : 9;
@@ -3790,16 +3736,17 @@ function firePower(card, twosCount, cont) {
 
   // ── JACK ─────────────────────────────────────────────────────
   } else if (n === 'J') {
-    // Fox's Gambit relic: Jack draws 1
+    // Fox's Gambit relic: Jack draws 1 extra
     if (G.relics.includes('foxs_gambit')) {
-      const drawn = drawUp(1);
-      log(`🦊 Fox's Gambit! Jack drew ${drawn}. Hand: ${G.hand.length}`, 'gold');
-      pulseRelic('foxs_gambit');
-    }
+        const drawn = drawUp(1);
+        log(`🦊 Fox's Gambit! Jack drew ${drawn}. Hand: ${G.hand.length}`, 'gold');
+        pulseRelic('foxs_gambit');
+      }
     if (lv >= 2) {
       const drawn = drawUp(1); // L2 and L3 both draw 1
       log(`Jack L${lv}! Drew ${drawn}. Hand: ${G.hand.length}`, 'blue');
     }
+    updateHUD(); renderActions();
     done();
 
   // ── QUEEN (multiplier for next hand) ─────────────────────────
@@ -3842,32 +3789,6 @@ function firePower(card, twosCount, cont) {
   } else {
     done();
   }
-}
-
-// Peek helpers
-function peekTakeCard(deckIdx, peekN) {
-  // deckIdx is index within the top peekN cards (reversed = top first)
-  const fromBottom = G.deck.length - 1 - deckIdx;
-  if (fromBottom < 0 || fromBottom >= G.deck.length) return;
-  const [taken] = G.deck.splice(fromBottom, 1);
-  if (G.hand.length < handCap()) G.hand.push(taken);
-  log(`3 ★★★ Peek: took ${taken.n}${taken.s} into hand.`, 'blue');
-  closeModal();
-  const cb = G._peekDoneCallback; G._peekDoneCallback = null;
-  if (cb) cb();
-  updateHUD(); renderActions();
-}
-function peekReorder(deckIdx, peekN) {
-  // Move the tapped card to the top of the deck (next to be drawn)
-  const fromBottom = G.deck.length - 1 - deckIdx;
-  if (fromBottom < 0 || fromBottom >= G.deck.length) return;
-  const [card] = G.deck.splice(fromBottom, 1);
-  G.deck.push(card);
-  log(`3 ★★ Peek: moved ${card.n}${card.s} to top of deck.`, 'blue');
-  closeModal();
-  const cb = G._peekDoneCallback; G._peekDoneCallback = null;
-  if (cb) cb();
-  updateHUD(); renderActions();
 }
 
 // Salvage helper
@@ -3977,37 +3898,6 @@ function animateQueenShuffle(onComplete, drawCount) {
 
 
 // ══════════════════════════════════════════════════════════════ 7 DUMP
-function doDump() {
-  const legal = legalPlays();
-  const sevens = legal.filter(c => c.n === '7');
-  if (sevens.length === 0) return;
-
-  if (sevens.length > 1) {
-    showModal(`<h2 style="color:var(--gold)">Choose your 7</h2>
-      <div class="modal-opts">
-        ${sevens.map(c => `<div class="modal-opt" onclick="startDump('${c.s}')">7${c.s}</div>`).join('')}
-      </div>`);
-  } else {
-    startDump(sevens[0].s);
-  }
-}
-
-function doOpenSevenDump() {
-  if (!G.openSeven) return;
-  const suit = G.openSeven; // the suit of the middle 7
-  const cards = G.hand.filter(c => c.s === suit);
-  if (cards.length === 0) {
-    log(`No ${suit} cards in hand to dump.`, 'dim');
-    return;
-  }
-  const col = RED_SUITS.has(suit) ? 'style="color:#cc2222"' : '';
-  showModal(`<h2 style="color:var(--gold)">⚡ Open 7 Dump</h2>
-    <p style="color:var(--dim);margin-bottom:8px">Middle card is 7${suit} — dump your ${suit} cards. No 7 needed from your hand.</p>
-    <div class="modal-opts">
-      <div class="modal-opt" ${col} onclick="startOpenSevenDump('${suit}')">${suit} — ${cards.map(c=>c.n+c.s).join(' ')}</div>
-      <div class="modal-opt" onclick="closeModal()" style="color:var(--dim)">Cancel</div>
-    </div>`);
-}
 
 function startOpenSevenDump(suit) {
   closeModal();
@@ -4153,23 +4043,6 @@ function executeDump() {
 }
 
 // ══════════════════════════════════════════════════════════════ SAME NUMBER
-function doSameNumber() {
-  const legal = legalPlays();
-  const groups = {};
-  for (const c of legal) { if (!groups[c.n]) groups[c.n] = []; groups[c.n].push(c); }
-  const multi = Object.entries(groups).filter(([n,cs]) => cs.length > 1);
-  if (multi.length === 0) return;
-
-  showModal(`<h2 style="color:var(--gold)">Stack Same Number</h2>
-    <p style="color:var(--dim);margin-bottom:8px">Play all copies of a number at once. Effects multiply.</p>
-    <div class="modal-opts">
-      ${multi.map(([n, cs]) => {
-        const pow = cs.some(c => (c.level || 0) >= 1) ? ' ⚡' : '';
-        return `<div class="modal-opt" onclick="executeSameNumber('${n}')">Play all ${n}s: ${cs.map(c=>c.n+c.s).join(' ')}${pow}</div>`;
-      }).join('')}
-      <div class="modal-opt" onclick="closeModal()" style="color:var(--dim)">Cancel</div>
-    </div>`);
-}
 
 function executeSameNumber(num) {
   closeModal();
@@ -5968,7 +5841,7 @@ function dbgCommitSetRound() {
     if (bossTemplate) {
       const entry = { ...bossTemplate };
       if (entry.key === 'cursed_number') {
-        const eligible = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+        const eligible = ['2','3','4','5','6','7','8','9','10','J','Q','K'];
         entry.cursedNumber = eligible[Math.floor(Math.random() * eligible.length)];
         entry.rule = `All ${entry.cursedNumber}s are treated as L0 this round.`;
       }
