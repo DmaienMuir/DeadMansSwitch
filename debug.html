@@ -2487,6 +2487,7 @@ function stageableIndices() {
         if (stagedSet.has(i)) return -1;
         if (c.n === 'J' || c.n === 'A') return i;
         if (suitMatches(c.s, ref.s) || c.n === ref.n) return i;
+        if (c.n === last.n) return i; // same number as last card always stageable (samenum stack)
         return -1;
       })
       .filter(i => i !== -1);
@@ -2572,9 +2573,9 @@ function modeAfterStaging(card, handIdx) {
     // stageability to number-only (causing e.g. same-number cards to block other-suit matches).
     if (G._jackBonusSlots > 0) {
       G._jackBonusSlots = Math.max(0, G._jackBonusSlots - 1);
-      return G._jackBonusSlots > 0 ? 'jackbonus' : 'single';
+      return G._jackBonusSlots > 0 ? 'jackbonus' : 'samenum';
     }
-    return 'single';
+    return 'samenum';
   }
 
   if (prevMode === 'jackbonus') {
@@ -2585,7 +2586,7 @@ function modeAfterStaging(card, handIdx) {
     if (card.n === 'A') return 'ace';
     // Never return 'samenum' here — same reason as prevMode=jack above.
     if (G._jackBonusSlots > 0) return 'jackbonus';
-    return 'single';
+    return 'samenum';
   }
 
   if (prevMode === 'ace') {
