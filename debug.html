@@ -2604,7 +2604,7 @@ function modeAfterStaging(card, handIdx) {
       // If Jack matches dump suit: stays in dump (dump continues with Jack's suit)
       // If Jack doesn't match dump suit: exits dump, enters jack mode
       // (Bonus slots already granted at top of modeAfterStaging.)
-      return dumpSuitMatches(card.s) ? 'dump' : 'jack';
+      return dumpSuitMatches(card.s) ? 'jack' : 'jack';
     }
     if (card.n === '7') return 'dump';
     if (card.n === 'A') {
