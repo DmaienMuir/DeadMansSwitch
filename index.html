@@ -4084,7 +4084,7 @@ function executeSameNumber(num) {
     for (const c of cards) if ((c.level || 0) >= 1) firePower(c, 1);
   }
 
-  const isJack = num === 'J';
+  const isJack = lastCard.n === 'J';
   if (!isJack) {
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
@@ -5154,9 +5154,9 @@ const POWER_DESCRIPTIONS = {
   },
   'J': {
     0: null,
-    1: 'Free play — does not consume a hand. Grants 1 bonus staging slot.',
-    2: 'Free play + draw 1 card. Grants 1 bonus staging slot.',
-    3: 'Free play + draw 1 card. Grants 2 bonus staging slots.',
+    1: 'Free play OR 1 bonus staging slot.',
+    2: 'Free play OR 1 bonus staging slot, + draw 1 card.',
+    3: 'Free play OR 2 bonus staging slots, + draw 1 card.',
   },
   'Q': {
     0: 'No power.',
