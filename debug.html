@@ -1141,8 +1141,8 @@ const ROUND_TARGETS = [0,  300,  420,  560,  800,  1000, 1250, 1550, 2000,
 //                    17     18⚡    19     20     21⚡    22     23     24⚡
                        9500, 11000, 12500, 14500, 17000, 19500, 22000, 25000];
 
-const ROUND_MAXHANDS = new Array(25).fill(8);  // flat 8 throughout
-const ROUND_MAXDISCS = new Array(25).fill(4);  // flat 4 throughout
+const ROUND_MAXHANDS = new Array(25).fill(10);  // Set Max Hands to 10 for all rounds (can be overwritten by boss)
+const ROUND_MAXDISCS = new Array(25).fill(5);  // Set Max Discards to 10 for all rounds (can be overwritten by boss)
 
 const ALL_RELICS = [
   // ── COMMON ───────────────────────────────────────────────────
@@ -1263,7 +1263,6 @@ function target() {
 }
 function maxHands() {
   let h = ROUND_MAXHANDS[roundIdx()];
-  if (G.activeBoss && G.activeBoss.key === 'shackled') h = Math.min(h, 12);
   if (G.activeBoss && G.activeBoss.key === 'one_shot') h = 1;
   return h;
 }
@@ -1279,6 +1278,9 @@ function freeDiscsLeft() { return Math.max(0, maxDiscs() - G.discUsed); }
 function handCap() {
   const total = (G.deck ? G.deck.length : 0) + (G.hand ? G.hand.length : 0) + (G.discardPile ? G.discardPile.length : 0);
   const bonus = (G && G.relics && G.relics.includes('pack_rat')) ? 4 : 0;
+  if (G.activeBoss && G.activeBoss.key === 'shackled') {
+    return 12;
+  }
   return Math.ceil(total / 2) + bonus;
 }
 
@@ -2953,9 +2955,9 @@ function executeChainFromStaged(ordered) {
 
   // Trailing same-number stack: if the chain ends with 2+ cards of the same number,
   // fire each card's power independently (matches executeSameNumberFromStaged behaviour).
-  // Cards with stackable powers: 2, 3, 6, 8, 10, K.
+  // Cards with stackable powers: 2, 3, 6, 8, 10, Q, K.
   // Others (4, 9, Q, A, J) fall through to fireLastCardPower as normal.
-  const STACKABLE_POWERS = new Set(['2', '3', '6', '8', '10', 'K']);
+  const STACKABLE_POWERS = new Set(['2', '3', '6', '8', '10', 'Q', 'K',]);
   const last = ordered[ordered.length - 1];
   const tailNum = last.n;
   const tailCards = [];
@@ -3012,10 +3014,10 @@ function executeChainFromStaged(ordered) {
       for (const eight of tailCards) {
         const lv = eight.level || 0;
         if (lv >= 1) {
-          const extraHands = lv >= 2 ? 2 : 1;
+          const extraHands = lv === 3 ? 3 : (lv === 2 ? 2 : 1);
           G.handsUsed -= extraHands;
-          if (lv >= 3) { const drawn = drawUp(1); log(`8${eight.s} L3! +${extraHands} hand${extraHands>1?'s':''}. Drew ${drawn}.`, 'blue'); }
-          else { log(`8${eight.s} L${lv}! +${extraHands} hand${extraHands>1?'s':''} (${handsLeft()} left)`, 'blue'); }
+          // if (lv >= 3) { const drawn = drawUp(1); log(`8${eight.s} L3! +${extraHands} hand${extraHands>1?'s':''}. Drew ${drawn}.`, 'blue'); }
+          // else { log(`8${eight.s} L${lv}! +${extraHands} hand${extraHands>1?'s':''} (${handsLeft()} left)`, 'blue'); }
         }
       }
       updateHUD(); afterStack(); return;
@@ -3715,14 +3717,14 @@ function firePower(card, twosCount, cont) {
 
   // ── 8 ────────────────────────────────────────────────────────
   } else if (n === '8') {
-    const extraHands = lv >= 2 ? 2 : 1;
+    const extraHands = lv === 3 ? 3 : (lv === 2 ? 2 : 1);
     G.handsUsed -= extraHands;
-    if (lv >= 3) {
-      const drawn = drawUp(1);
-      log(`8 L3! +${extraHands} hand${extraHands>1?'s':''}. Drew ${drawn}. Hand: ${G.hand.length}`, 'blue');
-    } else {
-      log(`8 L${lv}! +${extraHands} hand${extraHands>1?'s':''} remaining (${handsLeft()} left)`, 'blue');
-    }
+    // if (lv >= 3) {
+    //   const drawn = drawUp(1);
+    //   log(`8 L3! +${extraHands} hand${extraHands>1?'s':''}. Drew ${drawn}. Hand: ${G.hand.length}`, 'blue');
+    // } else {
+    //   log(`8 L${lv}! +${extraHands} hand${extraHands>1?'s':''} remaining (${handsLeft()} left)`, 'blue');
+    // }
     updateHUD();
     done();
 
@@ -5136,7 +5138,7 @@ const POWER_DESCRIPTIONS = {
     0: null,
     1: '+1 hand remaining.',
     2: '+2 hands remaining.',
-    3: '+2 hands remaining + draw 1 card.',
+    3: '+3 hands remaining.',
   },
   '9': {
     0: 'No power.',
