@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.7.48</title>
+<title>Dead Man's Switch v0.8.3</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -961,7 +961,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.7.48</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.3</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1011,7 +1011,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.7.48</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.3</div>
     </div>
   </div>
 
@@ -1298,10 +1298,13 @@ function shuffle(arr) {
 function isRed(card)      { return RED_SUITS.has(card.s); }
 
 function cardMatches(card, midN, midS, aceSuit) {
+  if (card.isJoker) return false; // Jokers can never be intentionally played
   const effSuit = aceSuit || midS;
   if (card.n === 'A') return true;
   // Wild 9 (L1+): matches any suit or number — plays freely like an Ace but with no declaration
   if (card.n === '9' && effectiveLevel(card) >= 1) return true;
+  // Casual Wear!: all cards match any card regardless of suit
+  if (G.activeBoss && G.activeBoss.key === 'casual_wear') return true;
   // Suit Lock boss: only suit matches allowed, no number matches
   if (G.activeBoss && G.activeBoss.key === 'suit_lock') {
     if (G.relics.includes('colorblind')) {
@@ -1322,7 +1325,12 @@ function cardMatches(card, midN, midS, aceSuit) {
 
 function legalPlays() {
   if (!G.middle) return []; // middle not yet set (e.g. Do Where Labs On picker)
-  return G.hand.filter(c => cardMatches(c, G.middle.n, G.middle.s, G.aceSuit));
+  return G.hand.filter(c => {
+    if (!cardMatches(c, G.middle.n, G.middle.s, G.aceSuit)) return false;
+    // No Mimics: ban numbers from last hand
+    if (G.activeBoss && G.activeBoss.key === 'no_mimics' && G._noMimicsNumbers && G._noMimicsNumbers.has(c.n)) return false;
+    return true;
+  });
 }
 
 // Returns effective level of a card this round (cursed_number boss may suppress)
@@ -1427,8 +1435,23 @@ function drawUp(n) {
       const idx = Math.floor(Math.random() * G.hand.length);
       G.gamblerCardKey = cardKey(G.hand[idx]);
     }
+    processJokersInHand();
     return drawn;
   }
+}
+
+function processJokersInHand() {
+  if (!G.activeBoss || G.activeBoss.key !== 'the_joker') return;
+  const jokerIndices = G.hand.reduce((acc, c, i) => c.isJoker ? [...acc, i] : acc, []);
+  if (jokerIndices.length === 0) return;
+  // Remove jokers from hand (in reverse order to keep indices valid)
+  for (let i = jokerIndices.length - 1; i >= 0; i--) {
+    G.hand.splice(jokerIndices[i], 1);
+  }
+  const penalty = Math.round(G.score * 0.2) * jokerIndices.length;
+  G.score = Math.max(0, G.score - penalty);
+  log(`🃏 Joker${jokerIndices.length > 1 ? 's' : ''} drawn! Score reduced by 20%${jokerIndices.length > 1 ? ` ×${jokerIndices.length}` : ''} → ${G.score}`, 'red');
+  updateHUD();
 }
 
 // Animate newly drawn cards flying in from the deck.
@@ -1493,7 +1516,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.7.48 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.3 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1865,8 +1888,9 @@ function calcPreviewScore(cards) {
   // ── Multipliers (same order as applyScore) ──
 
   // Hand-size bonus multiplier (Philosopher's Stone doubles it)
+  // Use total staged count (including leading Jacks) to match applyScore's totalCards logic
   if (isMultiCard) {
-    const n = cards.length;
+    const n = (G.staged && G.staged.length > cards.length) ? G.staged.length : cards.length;
     let handMult = n >= 10 ? 5 : n >= 7 ? 3 : n >= 5 ? 2 : n >= 3 ? 1.5 : 1;
     if (handMult > 1 && G.relics.includes('philosophers_stone')) handMult = handMult * 2;
     if (handMult > 1) raw = Math.round(raw * handMult);
@@ -1909,6 +1933,22 @@ function calcPreviewScore(cards) {
   // Full Hand ×3
   const isFullHand = cards.length === G.hand.length;
   if (isFullHand) raw = raw * 3;
+
+  // ── Boss modifiers ──────────────────────────────────────────────────────────
+  // Halfman: halve final score
+  if (G.activeBoss && G.activeBoss.key === 'halfman') {
+    raw = Math.floor(raw / 2);
+  }
+
+  // Glass Ceiling: cap at 1000
+  if (G.activeBoss && G.activeBoss.key === 'glass_ceiling') {
+    raw = Math.min(raw, 1000);
+  }
+
+  // Overclock: show ×2 in preview (the 20% misfire is intentionally unpredictable)
+  if (G.activeBoss && G.activeBoss.key === 'overclock') {
+    raw = raw * 2;
+  }
 
   return Math.round(raw);
 }
@@ -1976,6 +2016,9 @@ function startGame() {
     _cairdsSelected: [],
     _rewardSubtractIdxs: [],   // for subtract: up to 2 selected
     _vaultRoundsLeft: 0,  // The Vault: rounds remaining with +1 choice
+    _bossDisabledRelics: [],  // Shite Dr. Jones: relics temporarily removed
+    _noMimicsNumbers: new Set(), // No Mimics: numbers banned from next hand
+    _jokerCards: [],          // The Joker: joker pseudo-cards added this round
     _freeRelicChance: 0,   // accumulated free relic chance from 3s played this round
     _lucky3Options: null,   // pending free relic choices from Lucky 3
     _voidReshuffleCount: 0, // The Void: reshuffles this round (each grants a free relic at end)
@@ -2136,6 +2179,132 @@ const ALL_BOSSES = [
     note: 'They will be returned after you win.',
     targetMult: 0.7,
   },
+  {
+    key: 'shite_dr_jones',
+    name: 'Shite Dr. Jones',
+    art: '🧪',
+    tagline: "You won't be needing those.",
+    rule: null, // filled dynamically: 1 relic disabled per 6 rounds travelled
+    note: 'Disabled relics are restored after this round.',
+    targetMult: 0.85,
+  },
+  {
+    key: 'halfman',
+    name: 'Halfman',
+    art: '✂️',
+    tagline: 'Half the score, half the problem.',
+    rule: 'All final hand scores are halved after all other bonuses are applied.',
+    note: null,
+    targetMult: 0.65,
+  },
+  {
+    key: 'casual_wear',
+    name: 'Casual Wear!',
+    art: '👕',
+    tagline: "Dress code? Never heard of it.",
+    rule: 'All cards can be played on any card regardless of suit.',
+    note: 'Number matching still applies normally.',
+    targetMult: 1.7,
+  },
+  {
+    key: 'legend_killer',
+    name: 'Legend Killer',
+    art: '⚡',
+    tagline: 'The hardest road leads to the greatest reward.',
+    rule: 'Target score is greatly increased.',
+    note: 'Clearing this round guarantees a Legendary relic choice.',
+    targetMult: 1.75,
+  },
+  {
+    key: 'butter_fingers',
+    name: 'Butter Fingers',
+    art: '🧈',
+    tagline: 'Slippery when scored.',
+    rule: 'After each hand played, 1 random card from your hand is discarded. No replacement is drawn unless your hand drops below 7.',
+    note: null,
+    targetMult: 0.8,
+  },
+  {
+    key: 'surface_communism',
+    name: 'Surface-Level Communism',
+    art: '🟥',
+    tagline: 'All cards are equal. Equally unhelpful.',
+    rule: 'Card levels, tooltips, and suit colours are hidden for this round.',
+    note: 'Card powers still function normally.',
+    targetMult: 0.8,
+  },
+  {
+    key: 'no_mimics',
+    name: 'No Mimics',
+    art: '🚫',
+    tagline: "Don't repeat yourself.",
+    rule: 'The number(s) in the last hand you played cannot be played in the next hand.',
+    note: 'Restriction resets each time you play a hand.',
+    targetMult: 0.75,
+  },
+  {
+    key: 'overclock',
+    name: 'Overclock',
+    art: '⚡',
+    tagline: 'Push it to the limit. Hope for the best.',
+    rule: 'All hands score ×2, but there is a 20% chance any given hand scores nothing instead.',
+    note: null,
+    targetMult: 1.0,
+  },
+  {
+    key: 'dr_wilson',
+    name: 'Dr. Wilson',
+    art: '🗑️',
+    tagline: 'You can put the cards away, or you can fuck off.',
+    rule: 'Target score is very low, but every card you play is permanently destroyed.',
+    note: 'Destroyed cards are gone for the rest of the run.',
+    targetMult: 0.15,
+  },
+  {
+    key: 'glitch',
+    name: 'Glitch',
+    art: '👾',
+    tagline: 'Reality is buffering.',
+    rule: 'At the start of every hand, the suit of the middle card is randomised.',
+    note: null,
+    targetMult: 0.75,
+  },
+  {
+    key: 'glass_ceiling',
+    name: 'Glass Ceiling',
+    art: '🪟',
+    tagline: "You'll go no further.",
+    rule: 'Each hand is capped at 1,000 points maximum.',
+    note: 'Encourages many consistent hands over one big play.',
+    targetMult: 0.5,
+  },
+  {
+    key: 'the_joker',
+    name: 'The Joker',
+    art: '🃏',
+    tagline: 'Why so serious?',
+    rule: null, // filled dynamically with joker count
+    note: 'Drawing a Joker reduces your current score by 20%.',
+    targetMult: 0.85,
+  },
+  {
+    key: 'leaky_bath',
+    name: 'Leaky Bath',
+    art: '🛁',
+    tagline: 'Every discard costs more than you think.',
+    rule: 'Each discard subtracts 5% of the target score from your current score.',
+    note: 'Your score cannot go below 0.',
+    targetMult: 0.7,
+  },
+  {
+    key: 'feedback_loop',
+    name: 'Feedback Loop',
+    art: '🔁',
+    tagline: 'What goes around, comes around.',
+    rule: 'After each hand, your remaining hand is shuffled back into your deck and you redraw the same number of cards.',
+    note: null,
+    targetMult: 1.1,
+  },
 ];
 
 // Assign a boss round sequence at run start (called once)
@@ -2215,6 +2384,32 @@ function applyBossEffects() {
     });
     log(`🩸 Cursed Number! All ${boss.cursedNumber}s are L0 this round.`, 'red');
   }
+  if (boss.key === 'shite_dr_jones') {
+    const count = Math.max(1, Math.floor(G.roundNum / 6));
+    const available = [...G.relics];
+    G._bossDisabledRelics = [];
+    for (let i = 0; i < count && available.length > 0; i++) {
+      const idx = Math.floor(Math.random() * available.length);
+      const key = available.splice(idx, 1)[0];
+      const ri = G.relics.indexOf(key);
+      if (ri !== -1) { G.relics.splice(ri, 1); G._bossDisabledRelics.push(key); }
+    }
+    const names = G._bossDisabledRelics.map(k => ALL_RELICS.find(r=>r.key===k)?.name||k);
+    G.activeBoss.rule = `${count} relic${count>1?'s are':' is'} disabled this round: ${names.join(', ')}.`;
+    log(`🧪 Shite Dr. Jones! Disabled: ${names.join(', ')}.`, 'red');
+  }
+  if (boss.key === 'surface_communism') {
+    document.body.classList.add('boss-communism');
+    log(`🟥 Surface-Level Communism! Card levels and colours hidden.`, 'red');
+  }
+  if (boss.key === 'the_joker') {
+    const jokerCount = Math.max(1, Math.floor((G.deck.length + G.hand.length) / 26));
+    G._jokerCards = Array.from({length: jokerCount}, () => ({ n: '🃏', s: '?', level: 0, isJoker: true }));
+    G.deck.push(...G._jokerCards);
+    shuffle(G.deck);
+    G.activeBoss.rule = `${jokerCount} Joker card${jokerCount>1?'s have':' has'} been shuffled into your deck. Drawing one reduces your score by 20%.`;
+    log(`🃏 The Joker! ${jokerCount} Joker${jokerCount>1?'s':''} added to deck.`, 'red');
+  }
 }
 
 // Restore cards taken by boss at round end
@@ -2239,6 +2434,19 @@ function restoreBossCards() {
     G._cursedNumber = null;
     G._bossOriginalLevels = null;
   }
+  if (G._bossDisabledRelics && G._bossDisabledRelics.length > 0) {
+    G.relics.push(...G._bossDisabledRelics);
+    log(`🧪 Shite Dr. Jones over — relics restored: ${G._bossDisabledRelics.map(k=>ALL_RELICS.find(r=>r.key===k)?.name||k).join(', ')}.`, 'dim');
+    G._bossDisabledRelics = [];
+  }
+  if (G._jokerCards && G._jokerCards.length > 0) {
+    // Remove any remaining jokers from deck/hand/discard
+    G.deck = G.deck.filter(c => !c.isJoker);
+    G.hand = G.hand.filter(c => !c.isJoker);
+    G.discardPile = G.discardPile.filter(c => !c.isJoker);
+    G._jokerCards = [];
+  }
+  document.body.classList.remove('boss-communism');
   G.activeBoss = null;
   G._bossRemovedCards = null;
 }
@@ -2333,6 +2541,8 @@ function startRound() {
   G.tempoActive = false; G.tempoCount = 0; G.tempoBonusNext = 0; G._tempoSuit = null;
   G.surgeBonus = 0;
   G.gamblerCardKey = null;
+  G._noMimicsNumbers = new Set();
+  G._jokerCards = [];
   G._rewardChoicesDone = 0;
   G._rewardUsedActions = new Set();
   G.activeBoss = null;
@@ -2435,6 +2645,13 @@ function finishStartRound() {
   const logEl = document.getElementById('log-el');
   logEl.innerHTML = '';
   if (G.roundNum > 1 && G.fullLog) G.fullLog.push('');
+  // Glitch: randomise middle suit at the start of the first hand
+  if (G.activeBoss && G.activeBoss.key === 'glitch' && G.middle) {
+    const suits = ['♠','♥','♦','♣'];
+    G.middle = { ...G.middle, s: suits[Math.floor(Math.random() * suits.length)] };
+    G.openSeven = G.middle.n === '7' ? G.middle.s : null;
+    G.aceSuit = null;
+  }
   log(`─── ${roundLabel()} · Target: ${target()} pts ───`, 'gold');
   if (!G.relics.includes('do_where_labs_on')) {
     log(`Opening middle: ${G.middle.n}${G.middle.s}`, 'dim');
@@ -2927,11 +3144,59 @@ function commitStagedHand() {
   _executeCommit(staged);
 }
 
+// Post-hand settlement: drawUp, apply per-hand boss effects, then render+checkRoundEnd.
+// _di = hand.length snapshot before drawUp (for animateDealIn).
+// suppressBossHooks = true for Jack free-plays (no hand consumed, no boss effects).
+function postHandSettle(_di, suppressBossHooks) {
+  // ── Glitch: randomise middle suit at start of next turn ──────────────────
+  if (!suppressBossHooks && G.activeBoss && G.activeBoss.key === 'glitch' && G.middle) {
+    const suits = ['♠','♥','♦','♣'];
+    const newSuit = suits[Math.floor(Math.random() * suits.length)];
+    G.middle = { ...G.middle, s: newSuit };
+    G.openSeven = G.middle.n === '7' ? newSuit : null;
+    G.aceSuit = null;
+    log(`👾 Glitch! Middle suit randomised → ${newSuit}`, 'red');
+  }
+
+  // ── Butter Fingers: discard 1 random hand card (no replacement unless < 7) ─
+  if (!suppressBossHooks && G.activeBoss && G.activeBoss.key === 'butter_fingers' && G.hand.length > 0) {
+    const idx = Math.floor(Math.random() * G.hand.length);
+    const dropped = G.hand.splice(idx, 1)[0];
+    G.discardPile.push(dropped);
+    log(`🧈 Butter Fingers! ${dropped.n}${dropped.s} slipped away.`, 'red');
+  }
+
+  // ── Feedback Loop: shuffle remaining hand back into deck, redraw same count ─
+  if (!suppressBossHooks && G.activeBoss && G.activeBoss.key === 'feedback_loop' && G.hand.length > 0) {
+    const count = G.hand.length;
+    G.deck.push(...G.hand);
+    G.hand = [];
+    shuffle(G.deck);
+    const drawn = drawUp(count); // draw exactly the same number back
+    log(`🔁 Feedback Loop! ${count} cards returned, ${drawn} redrawn.`, 'red');
+    updateHUD(); renderActions(); animateDealIn(_di); checkRoundEnd();
+    return; // drawUp already called — skip normal drawUp below
+  }
+
+  drawUp();
+  // ── Butter Fingers: top up to 7 if hand dropped below threshold ────────────
+  if (!suppressBossHooks && G.activeBoss && G.activeBoss.key === 'butter_fingers' && G.hand.length < 7) {
+    drawUp(); // draw one more if needed (drawUp tops up to 7)
+  }
+  updateHUD(); renderActions(); animateDealIn(_di); checkRoundEnd();
+}
+
 function _executeCommit(staged) {
   G.staged = [];
   G._stagedMode = null;
   G._jackBonusSlots = 0;
   G.gamblerCardKey = null; // clear now — drawUp will assign a fresh one after the hand
+  // No Mimics: record the numbers being played so they're banned next hand
+  if (G.activeBoss && G.activeBoss.key === 'no_mimics') {
+    const lastPlayed = staged[staged.length - 1];
+    G._noMimicsNumbers = new Set(lastPlayed ? [lastPlayed.n] : []);
+    log(`🚫 No Mimics! Banned next hand: ${lastPlayed ? lastPlayed.n : 'none'}`, 'dim');
+  }
 
   // Peel off leading Jacks — each is free
   const jacks = [];
@@ -2944,6 +3209,10 @@ function _executeCommit(staged) {
     const idx = G.hand.findIndex(x => cardKey(x) === cardKey(j));
     if (idx !== -1) G.hand.splice(idx, 1);
     G.discardPile.push(j);
+    if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+      G.discardPile.splice(G.discardPile.indexOf(j), 1); // permanently destroy
+      log(`🗑️ Dr. Wilson! ${j.n}${j.s} permanently destroyed.`, 'red');
+    }
     G.pile.push(G.middle);
     G.middle = j;
     G.aceSuit = null;
@@ -2955,7 +3224,7 @@ function _executeCommit(staged) {
   }
 
   if (remainder.length === 0) {
-    { const _di = G.hand.length; drawUp(); updateHUD(); renderActions(); animateDealIn(_di); checkRoundEnd(); }
+    { const _di = G.hand.length; postHandSettle(_di, true); } // Jack free-play: suppress boss per-hand effects
     return;
   }
 
@@ -3072,7 +3341,12 @@ function executeChainFromStaged(ordered, totalCards) {
   for (const c of ordered) {
     const idx = G.hand.findIndex(x => cardKey(x) === cardKey(c));
     if (idx !== -1) G.hand.splice(idx, 1);
-    G.discardPile.push(c);
+    if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+      log(`🗑️ Dr. Wilson! ${c.n}${c.s} permanently destroyed.`, 'red');
+      // Don't push to discard — card is gone forever
+    } else {
+      G.discardPile.push(c);
+    }
   }
 
   G.pile.push(G.middle);
@@ -3212,7 +3486,7 @@ function executeChainFromStaged(ordered, totalCards) {
     } else if (!isJack) {
       log(`Hands left: ${handsLeft()}`, 'dim'); // 8 already adjusted handsUsed in firePower
     }
-    const finish = () => { drawUp(); updateHUD(); renderActions(); animateDealIn(_diChain); checkRoundEnd(); };
+    const finish = () => postHandSettle(_diChain);;
     // If an Ace was part of the chain, ask for suit declaration after scoring
     if (aceInChain && !wasDump && G.score < target()) {
       // Store the Ace card reference so fireAceChainDraw can read its level
@@ -3257,7 +3531,11 @@ function executeSameNumberFromStaged(cards, totalCards) {
   for (const c of cards) {
     const idx = G.hand.findIndex(x => cardKey(x) === cardKey(c));
     if (idx !== -1) G.hand.splice(idx, 1);
-    G.discardPile.push(c);
+    if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+      log(`🗑️ Dr. Wilson! ${c.n}${c.s} permanently destroyed.`, 'red');
+    } else {
+      G.discardPile.push(c);
+    }
   }
 
   G.pile.push(G.middle);
@@ -3298,7 +3576,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     }
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di2); checkRoundEnd(); }
+    postHandSettle(_di2);
     return;
   } else if (num === 'K') {
     const _diK = G.hand.length;
@@ -3316,7 +3594,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     if (totalDraw > 0) log(`Kings total draw: ${totalDraw}. Hand: ${G.hand.length}.`, 'dim');
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_diK); checkRoundEnd(); }
+    postHandSettle(_diK);
     return;
   } else if (num === '8') {
     const _di8 = G.hand.length;
@@ -3327,7 +3605,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     }
     // 8s do not cost a hand
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di8); checkRoundEnd(); }
+    postHandSettle(_di8);
     return;
   } else if (num === '3') {
     // Each 3 adds its free-relic chance independently
@@ -3343,7 +3621,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     const _di3 = G.hand.length;
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di3); checkRoundEnd(); }
+    postHandSettle(_di3);
     return;
 
   } else if (num === '6') {
@@ -3366,7 +3644,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     const _di6 = G.hand.length;
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di6); checkRoundEnd(); }
+    postHandSettle(_di6);
     return;
 
   } else if (num === '10') {
@@ -3382,7 +3660,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     const _di10 = G.hand.length;
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_di10); checkRoundEnd(); }
+    postHandSettle(_di10);
     return;
 
   } else if (num === 'Q') {
@@ -3391,7 +3669,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     const _diQ = G.hand.length;
     G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    { drawUp(); updateHUD(); renderActions(); animateDealIn(_diQ); checkRoundEnd(); }
+    postHandSettle(_diQ);
     return;
 
   } else if (num !== 'J') {
@@ -3399,7 +3677,7 @@ function executeSameNumberFromStaged(cards, totalCards) {
     fireLastCardPower(cards[cards.length - 1], cards, () => {
       G.handsUsed++;
       log(`Hands left: ${handsLeft()}`, 'dim');
-      { drawUp(); updateHUD(); renderActions(); animateDealIn(_diOther); checkRoundEnd(); }
+      postHandSettle(_diOther);
     });
     return; // continuation handles the rest
   }
@@ -3737,6 +4015,31 @@ function applyScore(cards, overrideTotal, opts = {}) {
     final = final * 3;
     log(`🖐️ FULL HAND! Played every card — ×3 bonus!`, 'gold');
     showHandSizeBanner(0, 3, 'FULL HAND!', '#ff4');
+  }
+
+  // ── Boss: Halfman — halve all final scores
+  if (G.activeBoss && G.activeBoss.key === 'halfman' && !opts.suppressSniper) {
+    final = Math.floor(final / 2);
+    log(`✂️ Halfman! Score halved → +${final} pts`, 'red');
+  }
+
+  // ── Boss: Glass Ceiling — cap per-hand score at 1000
+  if (G.activeBoss && G.activeBoss.key === 'glass_ceiling' && !opts.suppressSniper) {
+    if (final > 1000) {
+      log(`🪟 Glass Ceiling! Score capped: ${final} → 1000`, 'red');
+      final = 1000;
+    }
+  }
+
+  // ── Boss: Overclock — ×2 but 20% chance of scoring nothing
+  if (G.activeBoss && G.activeBoss.key === 'overclock' && !opts.suppressSniper) {
+    if (Math.random() < 0.2) {
+      log(`⚡ Overclock MISFIRE! 20% bad luck — scored nothing this hand.`, 'red');
+      final = 0;
+    } else {
+      final = final * 2;
+      log(`⚡ Overclock! Hand scored ×2 → +${final} pts`, 'gold');
+    }
   }
 
   const fromScore = G.score;
@@ -4158,7 +4461,12 @@ function executeDump() {
   for (const c of ordered) {
     const idx = G.hand.findIndex(x => cardKey(x) === cardKey(c));
     if (idx !== -1) G.hand.splice(idx, 1);
-    G.discardPile.push(c);
+    if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+      log(`🗑️ Dr. Wilson! ${c.n}${c.s} permanently destroyed.`, 'red');
+      // Don't push to discard — card is gone forever
+    } else {
+      G.discardPile.push(c);
+    }
   }
 
   G.pile.push(G.middle);
@@ -4313,9 +4621,23 @@ function discardCard(i) {
       const debtCost = (G.activeBoss && G.activeBoss.key === 'double_debt') ? 2 : 1;
       G.handsUsed += debtCost;
       log(`Discarded ${card.n}${card.s} — cost ${debtCost} hand${debtCost>1?'s':''}. Hands left: ${handsLeft()}`, 'dim');
+    // Leaky Bath: each discard (including paid) subtracts 5% of target score
+    if (G.activeBoss && G.activeBoss.key === 'leaky_bath') {
+      const penalty = Math.floor(target() * 0.05);
+      G.score = Math.max(0, G.score - penalty);
+      log(`🛁 Leaky Bath! Discard penalty: -${penalty} pts (score: ${G.score})`, 'red');
+      updateHUD();
+    }
     } else {
       G.discUsed++;
       log(`Discarded ${card.n}${card.s}. Free discards left: ${freeDiscsLeft()}`, 'dim');
+    // Leaky Bath: each discard subtracts 5% of target score (floor at 0)
+    if (G.activeBoss && G.activeBoss.key === 'leaky_bath') {
+      const penalty = Math.floor(target() * 0.05);
+      G.score = Math.max(0, G.score - penalty);
+      log(`🛁 Leaky Bath! Discard penalty: -${penalty} pts (score: ${G.score})`, 'red');
+      updateHUD();
+    }
     }
     const _diDisc = G.hand.length;
     // Always draw 1 replacement card on discard
@@ -4603,7 +4925,7 @@ function generateUpgradeCards() {
   return shuffle(upgradeable).slice(0, count);
 }
 
-function generateRewardRelics() {
+function generateRewardRelics(forceLegendary = false) {
   const allCards = [...(G.deck||[]), ...(G.hand||[]), ...(G.discardPile||[])];
   // Logbook: requires owning 2+ relics to be worth duplicating, and past round 3
   const canUseLogbook = G.relics.length >= 2 && G.roundNum > 3;
@@ -4614,6 +4936,7 @@ function generateRewardRelics() {
     if (r.key === 'mirror_shard') return false;
     if (r.key === 'logbook') return canUseLogbook && !G.relics.includes('logbook');
     if (r.key === 'blood_pact' || r.key === 'crimson_tide') return hasUpgradedQueen && !G.relics.includes(r.key);
+    if (forceLegendary && r.tier !== 'legendary') return false; // Legend Killer: legendaries only
     return !G.relics.includes(r.key) || r.key === 'trashman';
   });
   const weights = { common: 1, uncommon: 0.25, rare: 0.067, legendary: 0.02 };
@@ -4923,7 +5246,7 @@ function renderRewardActions() {
     ownedHtml += '</div>';
   }
 
-  const wasBossRound = isBossRound(G.roundNum);
+  const wasBossRound = isBossRound(G.roundNum) && G.roundNum !== 24; // no relic reward at Tier 8 boss (endless offer shown instead)
   const actions = [
     { id: 'add',      icon: '✚', label: 'Add Card',    desc: 'Add 1 card to your deck' },
     { id: 'subtract', icon: '✖', label: 'Remove Cards', desc: 'Remove up to 2 cards from your deck' },
@@ -5052,7 +5375,7 @@ function chooseRewardAction(actionId) {
     G._rewardSelectedIdx = null;
 
   } else if (actionId === 'relic') {
-    relics = generateRewardRelics();
+    relics = generateRewardRelics(G.activeBoss && G.activeBoss.key === 'legend_killer');
     let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Choose a relic to keep</div>
       <div class="reward-relics-grid">`;
     relics.forEach((r, i) => {
@@ -6106,13 +6429,32 @@ function dbgOpenSetRound() {
 }
 
 function renderDbgSetRound() {
-  const roundBtns = Array.from({length: 24}, (_, i) => {
+  // Base game rounds 1-24 (grouped by tier, 3 per row)
+  const allBossRounds = new Set([3,6,9,12,15,18,21,24, 27,30,33,36,39,42,45,48,51,54]);
+  const baseBtns = Array.from({length: 24}, (_, i) => {
     const r = i + 1;
-    const isBoss = [3,6,9,12,15,18,21,24].includes(r);
+    const isBoss = allBossRounds.has(r);
+    const tier = Math.ceil(r / 3);
+    const pos  = r % 3 || 3;
     const sel = _dbgRoundNum === r;
+    const label = isBoss ? `T${tier}⚔` : `T${tier}R${pos}`;
     return `<div class="dbg-chip${sel?' selected':''}${isBoss?' level-2':''}"
-      onclick="dbgSetRound(${r})" title="${isBoss?'Boss round':''}">${r}${isBoss?'⚔':''}</div>`;
+      onclick="dbgSetRound(${r})" title="Round ${r}${isBoss?' · Boss':''}">${label}</div>`;
   }).join('');
+
+  // Endless mode rounds 25-54 (grouped by tier)
+  const endlessBtns = Array.from({length: 30}, (_, i) => {
+    const r = i + 25;
+    const isBoss = allBossRounds.has(r);
+    const tier = Math.ceil(r / 3);
+    const pos  = r % 3 || 3;
+    const sel = _dbgRoundNum === r;
+    const label = isBoss ? `T${tier}⚔` : `T${tier}R${pos}`;
+    return `<div class="dbg-chip${sel?' selected':''}${isBoss?' level-2':''}"
+      onclick="dbgSetRound(${r})" title="Round ${r}${isBoss?' · Boss':''}" style="opacity:0.75">${label}</div>`;
+  }).join('');
+
+  const roundBtns = baseBtns;
 
   const BOSS_LIST = typeof ALL_BOSSES !== 'undefined' ? ALL_BOSSES : [];
   const bossOpts = [
@@ -6131,11 +6473,13 @@ function renderDbgSetRound() {
     </div>`;
   }).join('');
 
-  const canGo = _dbgRoundNum >= 1 && _dbgRoundNum <= 24;
+  const canGo = _dbgRoundNum >= 1 && _dbgRoundNum <= 54;
   document.getElementById('debug-modal-body').innerHTML = `
     <h2>⏭ SET ROUND</h2>
-    <div class="dbg-section-label">Round (⚔ = boss)</div>
-    <div class="dbg-grid" style="margin-bottom:14px">${roundBtns}</div>
+    <div class="dbg-section-label">Base game — Tiers 1–8 (⚔ = boss)</div>
+    <div class="dbg-grid" style="margin-bottom:10px">${roundBtns}</div>
+    <div class="dbg-section-label" style="opacity:0.7">Endless mode — Tiers 9–18</div>
+    <div class="dbg-grid" style="margin-bottom:14px">${endlessBtns}</div>
     <div class="dbg-section-label" style="margin-bottom:6px">Boss override</div>
     <div style="margin-bottom:12px">${bossOpts}</div>
     <button id="dbg-card-confirm" style="display:${canGo?'block':'none'}"
@@ -6156,7 +6500,7 @@ function dbgSetBossOverride(key) {
 function dbgCommitSetRound() {
   if (!G) { dbgStatus('No active game state'); return; }
   const r = _dbgRoundNum;
-  if (isNaN(r) || r < 1 || r > 24) { dbgStatus('Invalid round number'); return; }
+  if (isNaN(r) || r < 1 || r > 54) { dbgStatus('Invalid round number'); return; }
   G.roundNum = r;
   // Apply boss override to bossSchedule before startRound reads it
   if (!G.bossSchedule) G.bossSchedule = {};
