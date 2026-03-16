@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.12</title>
+<title>Dead Man's Switch v0.8.14</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -988,7 +988,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.12</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.14</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1038,7 +1038,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.12</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.14</div>
     </div>
   </div>
 
@@ -1478,24 +1478,14 @@ function jokerPenalty() {
   return tier * 100;
 }
 
-// Called after each drawUp — penalises newly drawn Jokers and keeps them in hand.
+// Called after each drawUp — marks newly drawn Jokers (no draw penalty; tick fires at round start).
 function processJokersInHand() {
   if (!G.activeBoss || G.activeBoss.key !== 'the_joker') return;
-  const newJokers = G.hand.filter(c => c.isJoker && !c._jokerPenaltyApplied);
-  if (newJokers.length === 0) return;
-  const X = jokerPenalty();
+  const newJokers = G.hand.filter(c => c.isJoker && !c._jokerDrawn);
   for (const j of newJokers) {
-    j._jokerPenaltyApplied = true;
-    G.score = Math.max(0, G.score - X);
-    log(`🃏 Joker drawn! −${X} pts (score: ${G.score})`, 'red');
+    j._jokerDrawn = true;
+    log(`🃏 Joker drawn! It will drain your score at the start of each turn.`, 'red');
   }
-  updateHUD();
-  // Banner notification for draw penalty
-  showHandSizeBanner(0, 0, '🃏 JOKER DRAWN!', '#cc44ff');
-  setTimeout(() => {
-    const sub = document.getElementById('combo-sub');
-    if (sub) sub.textContent = `−${X * newJokers.length} PTS`;
-  }, 10);
 }
 
 // Called at the start of each hand turn — ticks held Jokers for X each.
@@ -1507,7 +1497,12 @@ function tickJokersPerTurn() {
   const penalty = X * heldJokers.length;
   G.score = Math.max(0, G.score - penalty);
   log(`🃏 Joker${heldJokers.length > 1 ? 's' : ''} linger${heldJokers.length > 1 ? '' : 's'} in hand — −${penalty} pts (score: ${G.score})`, 'red');
+  // Cancel any in-progress score animation and snap to new value so the
+  // tween loop doesn't overwrite the updated score on its next frame.
+  if (typeof _scoreTween !== 'undefined' && _scoreTween) cancelAnimationFrame(_scoreTween);
+  _displayScore = G.score;
   updateHUD();
+  updateHUDScoreOnly();
   // Banner notification for turn tick
   showHandSizeBanner(0, 0, '🃏 JOKER LINGERS!', '#cc44ff');
   setTimeout(() => {
@@ -1578,7 +1573,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.12 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.14 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1818,10 +1813,11 @@ function updateScorePreview() {
     return;
   }
   const preview = calcPreviewScore(cards);
-  const newTotal = G.score + preview;
+  const newTotal = Math.max(0, G.score + preview); // Joker penalty can make this negative — floor at 0
   const pct = target() > 0 ? Math.min(100, newTotal / target() * 100) : 0;
   const currentPct = target() > 0 ? Math.min(100, G.score / target() * 100) : 0;
   previewEl.style.left = currentPct + '%';
+  // If net is negative (Joker cost > score gain), shrink the bar leftward
   previewEl.style.width = Math.max(0, pct - currentPct) + '%';
 }
 
@@ -1834,7 +1830,9 @@ function renderActions() {
 
   const canPlay = staged.length > 0;
   const previewScore = calcPreviewScore(staged);
-  const previewText = canPlay ? ` (+${previewScore} pts)` : '';
+  const previewText = canPlay
+    ? (previewScore < 0 ? ` (${previewScore} pts ⚠️)` : ` (+${previewScore} pts)`)
+    : '';
   html += `<button class="play-hand-btn" onclick="commitStagedHand()" ${canPlay?'':'disabled'}>
     ▶ Play Hand${previewText}
   </button>`;
@@ -2039,6 +2037,12 @@ function calcPreviewScore(cards) {
   // Overclock: show ×2 in preview (the 20% misfire is intentionally unpredictable)
   if (G.activeBoss && G.activeBoss.key === 'overclock') {
     raw = raw * 2;
+  }
+
+  // Joker: playing a Joker costs 3X — subtract from preview (can go negative to show net loss)
+  const jokerCount = cards.filter(c => c.isJoker).length;
+  if (jokerCount > 0) {
+    raw -= jokerCount * jokerPenalty() * 3;
   }
 
   return Math.round(raw);
