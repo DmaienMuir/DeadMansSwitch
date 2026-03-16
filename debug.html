@@ -2111,7 +2111,7 @@ function startGame() {
     _cairdsSelected: [],
     _rewardSubtractIdxs: [],   // for subtract: up to 2 selected
     _vaultRoundsLeft: 0,  // The Vault: rounds remaining with +1 choice
-    _bossDisabledRelics: [],  // Shite Dr. Jones: relics temporarily removed
+    _bossDisabledRelics: [],  // Performance Anxiety: relics temporarily removed
     _noMimicsNumbers: new Set(), // No Mimics: numbers banned from next hand
     _jokerCards: [],          // The Joker: joker pseudo-cards added this round
     _freeRelicChance: 0,   // accumulated free relic chance from 3s played this round
@@ -2276,9 +2276,9 @@ const ALL_BOSSES = [
     targetMult: 0.7,
   },
   {
-    key: 'shite_dr_jones',
-    name: 'Shite Dr. Jones',
-    art: '🧪',
+    key: 'performance_anxiety',
+    name: 'Performance Anxiety',
+    art: '🔵',
     tagline: "You won't be needing those.",
     rule: null, // filled dynamically: 1 relic disabled per 6 rounds travelled
     note: 'Disabled relics are restored after this round.',
@@ -2480,7 +2480,7 @@ function applyBossEffects() {
     });
     log(`🩸 Cursed Number! All ${boss.cursedNumber}s are L0 this round.`, 'red');
   }
-  if (boss.key === 'shite_dr_jones') {
+  if (boss.key === 'performance_anxiety') {
     const count = Math.max(1, Math.floor(G.roundNum / 6));
     const available = [...G.relics];
     G._bossDisabledRelics = [];
@@ -2492,7 +2492,7 @@ function applyBossEffects() {
     }
     const names = G._bossDisabledRelics.map(k => ALL_RELICS.find(r=>r.key===k)?.name||k);
     G.activeBoss.rule = `${count} relic${count>1?'s are':' is'} disabled this round: ${names.join(', ')}.`;
-    log(`🧪 Shite Dr. Jones! Disabled: ${names.join(', ')}.`, 'red');
+    log(`🔵 Performance Anxiety! Disabled: ${names.join(', ')}.`, 'red');
   }
   if (boss.key === 'surface_communism') {
     document.body.classList.add('boss-communism');
@@ -2533,7 +2533,7 @@ function restoreBossCards() {
   }
   if (G._bossDisabledRelics && G._bossDisabledRelics.length > 0) {
     G.relics.push(...G._bossDisabledRelics);
-    log(`🧪 Shite Dr. Jones over — relics restored: ${G._bossDisabledRelics.map(k=>ALL_RELICS.find(r=>r.key===k)?.name||k).join(', ')}.`, 'dim');
+    log(`🔵 Performance Anxiety over — relics restored: ${G._bossDisabledRelics.map(k=>ALL_RELICS.find(r=>r.key===k)?.name||k).join(', ')}.`, 'dim');
     G._bossDisabledRelics = [];
   }
   if (G._jokerCards && G._jokerCards.length > 0) {
@@ -3271,7 +3271,7 @@ function postHandSettle(_di, suppressBossHooks) {
     G.deck.push(...G.hand);
     G.hand = [];
     shuffle(G.deck);
-    const drawn = drawUp(count); // draw exactly the same number back
+    const drawn = drawUp(); // draw exactly the same number back
     log(`🔁 Feedback Loop! ${count} cards returned, ${drawn} redrawn.`, 'red');
     updateHUD(); renderActions(); animateDealIn(_di); checkRoundEnd();
     return; // drawUp already called — skip normal drawUp below
