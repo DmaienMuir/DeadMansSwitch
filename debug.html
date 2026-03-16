@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.3</title>
+<title>Dead Man's Switch v0.8.7</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -518,6 +518,18 @@ body {
 }
 .card.dragging { opacity: 0.35 !important; }
 
+/* ── BOSS: SURFACE-LEVEL COMMUNISM — hide card levels and colours ── */
+.boss-communism .card-l1,
+.boss-communism .card-l2,
+.boss-communism .card-l3 {
+  background: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+}
+.boss-communism .card-level-pip { display: none !important; }
+.boss-communism .card { color: #222 !important; }
+.boss-communism .card-tooltip { display: none !important; pointer-events: none !important; }
+
 /* ── JACK BONUS SLOT GHOST ── */
 .jack-bonus-slot {
   width: 64px;
@@ -961,7 +973,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.3</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.7</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1011,7 +1023,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.3</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.7</div>
     </div>
   </div>
 
@@ -1354,6 +1366,10 @@ function roundLabel(n) {
 }
 function nextRoundLabel() { return roundLabel(G.roundNum + 1); }
 function target() {
+  // Dr. Wilson: static target regardless of round — 400 pts base game, 1000 pts endless
+  if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+    return G.roundNum > 24 ? 1000 : 400;
+  }
   let t = ROUND_TARGETS[roundIdx()];
   if (G.crownActive) t = Math.floor(t * 0.85);
   if (G.activeBoss && G.activeBoss.targetMult !== 1.0) t = Math.round(t * G.activeBoss.targetMult);
@@ -1516,7 +1532,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.3 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.7 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2256,7 +2272,7 @@ const ALL_BOSSES = [
     name: 'Dr. Wilson',
     art: '🗑️',
     tagline: 'You can put the cards away, or you can fuck off.',
-    rule: 'Target score is very low, but every card you play is permanently destroyed.',
+    rule: 'Target score is fixed at 400 pts (1000 in endless mode), but every card you play is permanently destroyed.',
     note: 'Destroyed cards are gone for the rest of the run.',
     targetMult: 0.15,
   },
@@ -3208,10 +3224,10 @@ function _executeCommit(staged) {
   for (const j of jacks) {
     const idx = G.hand.findIndex(x => cardKey(x) === cardKey(j));
     if (idx !== -1) G.hand.splice(idx, 1);
-    G.discardPile.push(j);
     if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
-      G.discardPile.splice(G.discardPile.indexOf(j), 1); // permanently destroy
       log(`🗑️ Dr. Wilson! ${j.n}${j.s} permanently destroyed.`, 'red');
+    } else {
+      G.discardPile.push(j);
     }
     G.pile.push(G.middle);
     G.middle = j;
@@ -3403,7 +3419,7 @@ function executeChainFromStaged(ordered, totalCards) {
       const isJack = false; // stackable powers are never Jacks
       if (!consumeTempoIfApplicable(ordered)) G.handsUsed++;
       log(`Hands left: ${handsLeft()}`, 'dim');
-      drawUp(); updateHUD(); renderActions(); animateDealIn(_diChainStack); checkRoundEnd();
+      postHandSettle(_diChainStack);
     };
 
     if (tailNum === '2') {
@@ -3707,7 +3723,11 @@ function playAce(srcSuit, declaredSuit, srcCard) {
   G.middle = card;
   G.aceSuit = declaredSuit;
   G.openSeven = null;
-  G.discardPile.push(card);
+  if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+    log(`🗑️ Dr. Wilson! ${card.n}${card.s} permanently destroyed.`, 'red');
+  } else {
+    G.discardPile.push(card);
+  }
 
   applyScore([card]);
 
@@ -3772,7 +3792,11 @@ function doPlaySingle(card) {
   G.pile.push(G.middle);
   const prevMiddleN = G.middle.n; // capture BEFORE overwriting, for Top Hat
   G.middle = card;
-  G.discardPile.push(card);
+  if (G.activeBoss && G.activeBoss.key === 'dr_wilson') {
+    log(`🗑️ Dr. Wilson! ${card.n}${card.s} permanently destroyed.`, 'red');
+  } else {
+    G.discardPile.push(card);
+  }
 
   // Score
   let sc = BASE_SCORES[card.n];
@@ -3790,19 +3814,13 @@ function doPlaySingle(card) {
   if (!['A','J','7'].includes(card.n)) {
     const _di = G.hand.length; // capture BEFORE firePower draws any power cards
     firePower(card, 1, () => {
-      drawUp();
-      updateHUD(); renderActions();
-      animateDealIn(_di);
-      checkRoundEnd();
+      postHandSettle(_di);
     });
     return;
   }
 
   const _diSingle = G.hand.length;
-  drawUp();
-  updateHUD(); renderActions();
-  animateDealIn(_diSingle);
-  checkRoundEnd();
+  postHandSettle(_diSingle);
 }
 
 // ══════════════════════════════════════════════════════════════ SCORE
@@ -4035,6 +4053,12 @@ function applyScore(cards, overrideTotal, opts = {}) {
   if (G.activeBoss && G.activeBoss.key === 'overclock' && !opts.suppressSniper) {
     if (Math.random() < 0.2) {
       log(`⚡ Overclock MISFIRE! 20% bad luck — scored nothing this hand.`, 'red');
+      showHandSizeBanner(0, 0, 'OVERCLOCKED!', '#ff4444');
+      setTimeout(() => {
+        const banner = document.getElementById('combo-banner');
+        const sub = document.getElementById('combo-sub');
+        if (sub) sub.textContent = 'SCORE DOES NOT COUNT';
+      }, 10);
       final = 0;
     } else {
       final = final * 2;
@@ -4520,10 +4544,7 @@ function executeDump() {
     const isEightLast = last.n === '8';
     if (!isEightLast) G.handsUsed++;
     log(`Hands left: ${handsLeft()}`, 'dim');
-    drawUp();
-    updateHUD(); renderActions();
-    animateDealIn(_diExecDump);
-    checkRoundEnd();
+    postHandSettle(_diExecDump);
   };
   if ((last.level || 0) >= 1 && last.n !== '7') {
     log(`Final card ${last.n}${last.s} fires power!`, 'blue');
@@ -4936,7 +4957,6 @@ function generateRewardRelics(forceLegendary = false) {
     if (r.key === 'mirror_shard') return false;
     if (r.key === 'logbook') return canUseLogbook && !G.relics.includes('logbook');
     if (r.key === 'blood_pact' || r.key === 'crimson_tide') return hasUpgradedQueen && !G.relics.includes(r.key);
-    if (forceLegendary && r.tier !== 'legendary') return false; // Legend Killer: legendaries only
     return !G.relics.includes(r.key) || r.key === 'trashman';
   });
   const weights = { common: 1, uncommon: 0.25, rare: 0.067, legendary: 0.02 };
@@ -4949,7 +4969,18 @@ function generateRewardRelics(forceLegendary = false) {
   }
   const chosen = [];
   const used = new Set();
-  for (let i = 0; i < 3; i++) {
+
+  // Legend Killer: guarantee at least one legendary in the first slot
+  if (forceLegendary) {
+    const legendaryPool = pool.filter(x => x.r.tier === 'legendary');
+    if (legendaryPool.length > 0) {
+      const p = weightedPick(legendaryPool);
+      used.add(p.key);
+      chosen.push(p);
+    }
+  }
+
+  for (let i = chosen.length; i < 3; i++) {
     const rem = pool.filter(x => !used.has(x.r.key));
     if (!rem.length) break;
     const p = weightedPick(rem);
