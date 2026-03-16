@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.14</title>
+<title>Dead Man's Switch v0.8.17</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -988,7 +988,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.14</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.17</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1038,7 +1038,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.14</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.17</div>
     </div>
   </div>
 
@@ -1331,7 +1331,7 @@ function cardMatches(card, midN, midS, aceSuit) {
   if (card.n === 'A') return true;
   // Wild 9 (L1+): matches any suit or number — plays freely like an Ace but with no declaration
   if (card.n === '9' && effectiveLevel(card) >= 1) return true;
-  // Casual Wear!: all cards match any card regardless of suit
+  // Casual Wear!: all cards match any middle card regardless of suit
   if (G.activeBoss && G.activeBoss.key === 'casual_wear') return true;
   // Suit Lock boss: only suit matches allowed, no number matches
   if (G.activeBoss && G.activeBoss.key === 'suit_lock') {
@@ -1573,7 +1573,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.14 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.17 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2129,7 +2129,7 @@ function startGame() {
 function showRelicChoice() {
   showScreen('relic-screen');
   // Starting relic: slight rare chance, no legendary
-  const startPool = ALL_RELICS.filter(r => r.tier !== 'legendary' && r.key !== 'mirror_shard');
+  const startPool = ALL_RELICS.filter(r => r.tier !== 'legendary' && r.key !== 'mirror_shard' && !DISABLED_RELICS.has(r.key));
   const weights = { common: 0.70, uncommon: 0.25, rare: 0.05 };
   const pool = startPool.map(r => ({ r, w: r.key === 'trashman' ? (weights.common * 1.5) : (weights[r.tier] || 1) }));
   function weightedPick(pool) {
@@ -2298,7 +2298,7 @@ const ALL_BOSSES = [
     name: 'Casual Wear!',
     art: '👕',
     tagline: "Dress code? Never heard of it.",
-    rule: 'All cards can be played on any card regardless of suit.',
+    rule: 'All cards can be played on any middle card regardless of suit.',
     note: 'Number matching still applies normally.',
     targetMult: 1.7,
   },
@@ -2385,12 +2385,12 @@ const ALL_BOSSES = [
   },
   {
     key: 'leaky_bath',
-    name: 'Leaky Bath',
-    art: '🛁',
-    tagline: 'Every discard costs more than you think.',
-    rule: 'Each discard subtracts 5% of the target score from your current score.',
-    note: 'Your score cannot go below 0.',
-    targetMult: 0.7,
+    name: 'Leaky Pisser',
+    art: '🚿',
+    tagline: 'Paid discards come with a price.',
+    rule: 'Each paid discard subtracts 5% of the target score from your current score.',
+    note: 'Free discards are unaffected. Your score cannot go below 0.',
+    targetMult: 0.75,
   },
   {
     key: 'feedback_loop',
@@ -3572,6 +3572,11 @@ function executeChainFromStaged(ordered, totalCards) {
       }
       afterStack(); return;
     }
+    if (tailNum === 'Q') {
+      // Each Queen fires independently — multipliers stack additively (or multiplicatively with Blood Pact)
+      for (const q of tailCards) firePower(q, 1, () => {});
+      afterStack(); return;
+    }
     if (tailNum === 'K') {
       let totalDraw = 0;
       for (const k of tailCards) {
@@ -4750,23 +4755,17 @@ function discardCard(i) {
       const debtCost = (G.activeBoss && G.activeBoss.key === 'double_debt') ? 2 : 1;
       G.handsUsed += debtCost;
       log(`Discarded ${card.n}${card.s} — cost ${debtCost} hand${debtCost>1?'s':''}. Hands left: ${handsLeft()}`, 'dim');
-    // Leaky Bath: each discard (including paid) subtracts 5% of target score
+    // Leaky Pisser: paid discards subtract 5% of target score
     if (G.activeBoss && G.activeBoss.key === 'leaky_bath') {
       const penalty = Math.floor(target() * 0.05);
       G.score = Math.max(0, G.score - penalty);
-      log(`🛁 Leaky Bath! Discard penalty: -${penalty} pts (score: ${G.score})`, 'red');
+      log(`🚿 Leaky Pisser! Paid discard penalty: -${penalty} pts (score: ${G.score})`, 'red');
       updateHUD();
     }
     } else {
       G.discUsed++;
       log(`Discarded ${card.n}${card.s}. Free discards left: ${freeDiscsLeft()}`, 'dim');
-    // Leaky Bath: each discard subtracts 5% of target score (floor at 0)
-    if (G.activeBoss && G.activeBoss.key === 'leaky_bath') {
-      const penalty = Math.floor(target() * 0.05);
-      G.score = Math.max(0, G.score - penalty);
-      log(`🛁 Leaky Bath! Discard penalty: -${penalty} pts (score: ${G.score})`, 'red');
-      updateHUD();
-    }
+    // Leaky Pisser: free discards are unaffected
     }
     const _diDisc = G.hand.length;
     // Always draw 1 replacement card on discard
