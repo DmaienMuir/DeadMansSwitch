@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.7</title>
+<title>Dead Man's Switch v0.8.10</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -973,7 +973,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.7</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.10</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1023,7 +1023,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.7</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.10</div>
     </div>
   </div>
 
@@ -1532,7 +1532,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.7 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.10 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -2114,6 +2114,7 @@ function applyOnTheGear() {
 // ══════════════════════════════════════════════════════════════ BOSS SYSTEM
 
 function advanceToNextRound() {
+  G._legendKillerReward = false; // clear after reward screen is done
   G.roundNum++;
   if (isBossRound(G.roundNum)) {
     showBossScreen(G.roundNum, () => startRound());
@@ -4800,6 +4801,9 @@ function endRound() {
   G.hand = [];
   G.middle = null;
 
+  // Capture legend_killer flag before restoreBossCards clears G.activeBoss
+  G._legendKillerReward = !!(G.activeBoss && G.activeBoss.key === 'legend_killer');
+
   // Restore any cards removed by boss before shuffling
   restoreBossCards();
 
@@ -5406,7 +5410,7 @@ function chooseRewardAction(actionId) {
     G._rewardSelectedIdx = null;
 
   } else if (actionId === 'relic') {
-    relics = generateRewardRelics(G.activeBoss && G.activeBoss.key === 'legend_killer');
+    relics = generateRewardRelics(G._legendKillerReward || false);
     let html = `<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;">Choose a relic to keep</div>
       <div class="reward-relics-grid">`;
     relics.forEach((r, i) => {
