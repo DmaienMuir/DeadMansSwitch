@@ -3852,6 +3852,7 @@ function playAce(srcSuit, declaredSuit, srcCard) {
   drawUp();
   updateHUD(); renderActions();
   animateDealIn(_diAce);
+  postHandSettle(_diAce);
   checkRoundEnd();
 }
 
