@@ -2,387 +2,672 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Dead Man's Switch — GDD v0.7.10</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead Man's Switch — Game Design Document v0.8.27</title>
 <style>
-:root{--bg:#0e0e12;--sur:#15151c;--sur2:#1e1e28;--bdr:#2a2a38;--cream:#e8dcc8;--gold:#d4af37;--dim:#6a6a7a;--green:#4a9a6a;--red:#b84040;--blue:#4a7ac8;--lbl1:rgba(190,185,220,0.9);--lbl2:#d4af37;--lbl3:rgba(90,150,235,0.95)}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--cream);font-family:Georgia,serif;font-size:15px;line-height:1.75;padding-bottom:80px}
-.wrap{max-width:920px;margin:0 auto;padding:0 28px}
-h1{font-size:38px;color:var(--gold);letter-spacing:4px;text-align:center;padding:52px 0 6px}
-.ver{text-align:center;color:var(--dim);font-size:12px;letter-spacing:3px;margin-bottom:52px}
-h2{font-size:20px;color:var(--gold);letter-spacing:2px;margin:52px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--bdr)}
-h3{font-size:15px;color:var(--cream);letter-spacing:.5px;margin:28px 0 10px;opacity:.9}
-p{margin-bottom:12px}
-li{margin-bottom:5px}
-ul,ol{padding-left:22px;margin-bottom:12px}
-.note{background:var(--sur);border-left:3px solid var(--gold);padding:11px 15px;margin:16px 0;border-radius:0 4px 4px 0;font-size:14px}
-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
-th{background:var(--sur2);color:var(--gold);padding:8px 12px;text-align:left;border:1px solid var(--bdr);font-size:11px;letter-spacing:1px;text-transform:uppercase}
-td{padding:8px 12px;border:1px solid var(--bdr);vertical-align:top}
-tr:nth-child(even) td{background:var(--sur)}
-.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-family:sans-serif;vertical-align:middle}
-.common{color:var(--dim);border:1px solid var(--dim)}
-.uncommon{color:#7ec8a0;border:1px solid #7ec8a0}
-.rare{color:#e8943a;border:1px solid #e8943a}
-.legendary{color:var(--gold);border:1px solid var(--gold)}
-.stack{color:#88ccff;font-size:11px;font-family:sans-serif;letter-spacing:.5px}
-.boss{color:var(--red);font-style:italic}
-code{background:var(--sur2);padding:1px 6px;border-radius:3px;font-family:monospace;font-size:13px;color:var(--blue)}
-.suits{color:var(--gold);letter-spacing:10px;opacity:.35;text-align:center;padding:28px 0 0;font-size:18px}
+  :root {
+    --bg:       #0e0e1a;
+    --surface:  #16162a;
+    --surface2: #1e1e34;
+    --border:   #2e2e50;
+    --gold:     #c9a84c;
+    --blue:     #4a7aaa;
+    --cream:    #e8e0cc;
+    --dim:      #7a7898;
+    --red:      #cc3333;
+    --green:    #3a8a5a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Georgia', serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── Layout ── */
+  .page-wrap {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  nav {
+    width: 260px;
+    min-width: 260px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  nav .nav-title {
+    font-family: 'Georgia', serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  nav a {
+    display: block;
+    padding: 6px 20px;
+    color: var(--dim);
+    text-decoration: none;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    transition: color 0.15s, background 0.15s;
+    border-left: 2px solid transparent;
+  }
+  nav a:hover { color: var(--cream); background: var(--surface2); }
+  nav a.h1-link { color: var(--cream); font-weight: bold; margin-top: 8px; font-size: 13px; }
+  nav a.h2-link { padding-left: 32px; font-size: 12px; }
+  nav a.active { border-left-color: var(--gold); color: var(--gold); }
+
+  main {
+    flex: 1;
+    padding: 48px 60px;
+    max-width: 1000px;
+  }
+
+  /* ── Title block ── */
+  .title-block {
+    text-align: center;
+    padding: 60px 0 48px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 56px;
+  }
+  .title-block h1 {
+    font-family: 'Georgia', serif;
+    font-size: 48px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    border: none;
+    padding: 0;
+    margin: 0 0 8px;
+  }
+  .title-block .subtitle {
+    font-size: 18px;
+    color: var(--dim);
+    margin-bottom: 6px;
+    font-family: Arial, sans-serif;
+  }
+  .title-block .version {
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: Arial, sans-serif;
+  }
+
+  /* ── Headings ── */
+  h1 {
+    font-family: 'Georgia', serif;
+    font-size: 28px;
+    color: var(--cream);
+    border-bottom: 2px solid var(--gold);
+    padding-bottom: 10px;
+    margin: 52px 0 20px;
+  }
+  h2 {
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--gold);
+    margin: 32px 0 12px;
+  }
+  h3 {
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--blue);
+    margin: 24px 0 8px;
+  }
+
+  /* ── Body text ── */
+  p { margin-bottom: 12px; font-family: Arial, sans-serif; font-size: 14px; }
+  ul { margin: 8px 0 12px 24px; }
+  li { margin-bottom: 5px; font-family: Arial, sans-serif; font-size: 14px; }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; margin: 16px 0 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+  }
+  thead tr { background: #1e1e40; }
+  thead th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--gold);
+    font-weight: 700;
+    border-bottom: 2px solid var(--border);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(odd)  { background: var(--surface2); }
+  tbody tr:nth-child(even) { background: var(--surface); }
+  tbody tr:hover { background: #252545; }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--cream);
+    line-height: 1.5;
+  }
+  td.center { text-align: center; }
+  td.mono { font-family: monospace; font-size: 12px; }
+  td.gold { color: var(--gold); font-weight: bold; }
+  td.dim  { color: var(--dim); }
+  td.yes  { color: var(--green); font-weight: bold; }
+  td.no   { color: var(--dim); }
+
+  /* ── Tier badges ── */
+  .tier { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+  .tier-common    { background: #2a2a2a; color: #aaa; }
+  .tier-uncommon  { background: #1a2e22; color: #7ec8a0; }
+  .tier-rare      { background: #2e1e10; color: #e8943a; }
+  .tier-legendary { background: #2e2510; color: #d4af37; }
+
+  /* ── Call-out boxes ── */
+  .callout {
+    background: var(--surface2);
+    border-left: 3px solid var(--gold);
+    padding: 14px 18px;
+    margin: 16px 0;
+    border-radius: 0 4px 4px 0;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--cream);
+  }
+  .callout.blue  { border-left-color: var(--blue); }
+  .callout.red   { border-left-color: var(--red); }
+
+  /* ── Section divider ── */
+  .section-rule { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; color: #111; }
+    nav { display: none; }
+    main { max-width: 100%; padding: 20px; }
+    h1 { color: #111; border-bottom-color: #c9a84c; }
+    h2 { color: #444; }
+    table { font-size: 11px; }
+    thead tr { background: #eee; }
+    thead th { color: #111; }
+    tbody tr:nth-child(odd) { background: #f9f9f9; }
+    td { color: #111; }
+  }
+
+  @media (max-width: 860px) {
+    nav { display: none; }
+    main { padding: 24px 20px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-<div class="suits">♠ ♥ ♦ ♣</div>
-<h1>DEAD MAN'S SWITCH</h1>
-<div class="ver">Game Design Document &nbsp;·&nbsp; v0.7.10</div>
+<div class="page-wrap">
 
-<!-- ══════════════════════════════════════════ OVERVIEW -->
-<h2>Overview</h2>
-<p>Dead Man's Switch is a single-player roguelike deck-builder built on the rules of Switch (also known as Crazy Eights). Play through 24 rounds, each with a score target to beat using a limited number of hands and discards. Between rounds choose rewards — new cards, upgrades, or relics — that permanently shape your run.</p>
-<p>Cards have levels (L0–L3) that unlock and enhance powers. Relics provide passive or triggered bonuses. Strategy comes from building synergies between card levels, relic combinations, and the timing and sequencing of your plays.</p>
+<!-- ── SIDEBAR NAV ── -->
+<nav id="sidebar">
+  <div class="nav-title">Dead Man's Switch GDD</div>
+  <a href="#overview" class="h1-link">1. Overview</a>
+  <a href="#core-rules" class="h1-link">2. Core Rules</a>
+  <a href="#legal-plays" class="h2-link">Legal Plays</a>
+  <a href="#special-mechanics" class="h2-link">Special Mechanics</a>
+  <a href="#scoring" class="h1-link">3. Scoring</a>
+  <a href="#card-levels" class="h1-link">4. Card Levels</a>
+  <a href="#card-powers" class="h1-link">5. Card Powers</a>
+  <a href="#relics" class="h1-link">6. Relics</a>
+  <a href="#common" class="h2-link">Common</a>
+  <a href="#uncommon" class="h2-link">Uncommon</a>
+  <a href="#rare" class="h2-link">Rare</a>
+  <a href="#legendary" class="h2-link">Legendary</a>
+  <a href="#round-structure" class="h1-link">7. Round Structure</a>
+  <a href="#bosses" class="h1-link">8. Bosses</a>
+  <a href="#boss-assignment" class="h1-link">9. Boss Assignment</a>
+  <a href="#legacy" class="h1-link">10. Legacy System</a>
+  <a href="#systems" class="h1-link">11. Systems Summary</a>
+</nav>
 
-<!-- ══════════════════════════════════════════ CORE RULES -->
-<h2>Core Rules</h2>
-<h3>Basic Play</h3>
-<ul>
-  <li>Play one card (or a legal group of cards) per hand. A card is legal if it matches the <strong>middle card</strong> by suit or by number.</li>
-  <li>After every play, draw back up to your hand size cap.</li>
-  <li>Each round starts with 8 hands and 4 free discards.</li>
-  <li>Discards beyond the free limit cost 1 hand each (2 hands against The Usurer boss).</li>
-  <li>Staged cards cannot be discarded.</li>
-  <li>Double-clicking or double-tapping a legal card stages it directly from hand.</li>
-</ul>
+<!-- ── MAIN CONTENT ── -->
+<main>
 
-<h3>Hand Size Cap</h3>
-<p>Maximum hand size = <code>⌈totalCards / 2⌉</code> where <em>totalCards</em> = deck + hand + discard pile. The <strong>Pack Rat</strong> relic adds +4 on top of this.</p>
+  <div class="title-block">
+    <h1>Dead Man's Switch</h1>
+    <div class="subtitle">Game Design Document</div>
+    <div class="version">v0.8.27</div>
+  </div>
 
-<h3>Special Card Mechanics</h3>
-<ul>
-  <li><strong>Aces</strong> — Always legal to play. Declare the active suit for the next card.</li>
-  <li><strong>7s</strong> — Open a suit dump. See Dump Rules below.</li>
-  <li><strong>Jacks</strong> — Always legal after another Jack. Do not cost a hand count.</li>
-  <li><strong>Same-number stacks</strong> — Multiple cards of the same number may be played as one hand simultaneously.</li>
-</ul>
+  <!-- ══ 1. OVERVIEW ══════════════════════════════════════════ -->
+  <h1 id="overview">1. Overview</h1>
+  <p>Dead Man's Switch is a single-player roguelike card game played entirely in a browser — a single self-contained HTML file with no dependencies. It is built on the rules of the card game Switch (also known as Crazy Eights), extended with level-based card powers, roguelike relics, a boss system, and meta-progression across multiple runs.</p>
+  <p>Each round the player must score enough points before running out of hands. Between rounds they upgrade their deck and collect relics that compound in power as the run progresses.</p>
 
-<h3>7-Dump Rules</h3>
-<ul>
-  <li>Strict suit-only — each card must match the opening 7's suit.</li>
-  <li>Jacks may be played mid-dump: if the Jack matches the dump suit it stays in the dump; otherwise it exits the dump and enters jack chain mode.</li>
-  <li>Aces are always chainable in a dump. An off-suit Ace is terminal — only further Aces may follow.</li>
-  <li>A second 7 is only legal immediately after another 7.</li>
-  <li>An off-suit same-number play transitions to <em>samenum</em> mode (locked to that number only).</li>
-  <li>Only the <strong>final card</strong> fires its power effect — except Threes, which always fire (see Card Powers).</li>
-  <li>If the dump ends on a trailing same-number stack of stackable card types, each card in that stack fires its power independently.</li>
-</ul>
+  <!-- ══ 2. CORE RULES ════════════════════════════════════════ -->
+  <h1 id="core-rules">2. Core Rules</h1>
 
-<h3>Jack Chain Rules</h3>
-<ul>
-  <li>Jacks do not consume a hand.</li>
-  <li>Any Jack is always stageable after another Jack.</li>
-  <li>Non-J/A cards staged after a Jack must match the Jack's suit.</li>
-  <li><strong>Bonus slots (L2/L3 Jacks):</strong> An L2 Jack grants 1 bonus staging slot; an L3 Jack grants 2. In a bonus slot the next card may match by <em>suit or number</em> of the last non-Jack staged card. Each bonus slot is consumed when used.</li>
-  <li>An Ace staged after a Jack enters ace mode — only further Aces may follow.</li>
-</ul>
+  <h2 id="legal-plays">2.1 Legal Plays</h2>
+  <p>A card is legal to play if it matches the current middle card's <strong>suit</strong> or <strong>number</strong>. The middle card updates after every play. Playing an Ace or a wild L1+ 9 is always legal.</p>
 
-<h3>Scoring</h3>
-<table>
-  <tr><th>Card</th><th>Base Score</th></tr>
-  <tr><td>2 – 10</td><td>Face value × 10 pts</td></tr>
-  <tr><td>A, J, Q, K</td><td>110 pts each</td></tr>
-</table>
+  <h2 id="special-mechanics">2.2 Special Mechanics</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:200px">Mechanic</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="gold">Hand Size Cap</td><td><code>ceil(totalCards / 2)</code> where totalCards = deck + hand + discard combined.</td></tr>
+      <tr><td class="gold">Discards</td><td>5 free discards per round. Each discard draws 1 replacement card. Paid discards cost 1 hand (or 2 with The Usurer boss).</td></tr>
+      <tr><td class="gold">7 Dump</td><td>Playing a 7 opens a suit dump — play any number of cards of that suit in sequence. Only the final card fires its power (3s excepted). If the new middle card after any play is a 7, the dump opens immediately for the next hand.</td></tr>
+      <tr><td class="gold">Same-Number Stack</td><td>Multiple cards of the same number played simultaneously. All stackable powers fire independently per card.</td></tr>
+      <tr><td class="gold">Jack Chain</td><td>Jacks do not consume a hand. Each Jack grants bonus follow-up slots for additional cards matching the last non-Jack's suit or number.</td></tr>
+      <tr><td class="gold">Ace</td><td>Always playable. Declares the active suit for the next card played.</td></tr>
+      <tr><td class="gold">Wild 9 (L1+)</td><td>Matches any suit or number. Continues dumps. Power fires if it is the last card.</td></tr>
+      <tr><td class="gold">Full Hand Bonus</td><td>×3 multiplier if every card in hand is played in one turn — applied after all other bonuses.</td></tr>
+    </tbody>
+  </table>
+  </div>
 
-<h3>Hand-Size Multipliers</h3>
-<table>
-  <tr><th>Cards Played</th><th>Multiplier</th></tr>
-  <tr><td>3 cards</td><td>×1.5</td></tr>
-  <tr><td>5 cards</td><td>×2</td></tr>
-  <tr><td>7 cards</td><td>×3</td></tr>
-  <tr><td>10 cards</td><td>×5</td></tr>
-  <tr><td>Full Hand (every card in hand played at once)</td><td>×3 <em>(applied after all other multipliers)</em></td></tr>
-</table>
+  <!-- ══ 3. SCORING ═══════════════════════════════════════════ -->
+  <h1 id="scoring">3. Scoring</h1>
 
-<!-- ══════════════════════════════════════════ CARD LEVELS & POWERS -->
-<h2>Card Levels &amp; Powers</h2>
+  <h2>3.1 Base Card Scores</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Card(s)</th><th>Base Score</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>20 pts</td></tr>
+      <tr><td>3</td><td>30 pts</td></tr>
+      <tr><td>4</td><td>40 pts</td></tr>
+      <tr><td>5</td><td>50 pts</td></tr>
+      <tr><td>6</td><td>60 pts</td></tr>
+      <tr><td>7</td><td>70 pts</td></tr>
+      <tr><td>8</td><td>80 pts</td></tr>
+      <tr><td>9</td><td>90 pts</td></tr>
+      <tr><td>10</td><td>100 pts</td></tr>
+      <tr><td>A, J, Q, K</td><td>110 pts each</td></tr>
+    </tbody>
+  </table>
+  </div>
 
-<h3>Level Colours</h3>
-<table>
-  <tr><th>Level</th><th>Colour</th><th>Cards that start here</th></tr>
-  <tr><td>L0</td><td>White</td><td>3, 4, 5, 6, 9, 10, Q — red Kings (♥♦)</td></tr>
-  <tr><td>L1</td><td>Steel grey</td><td>A, 2, 7, 8, J — black Kings (♠♣)</td></tr>
-  <tr><td>L2</td><td>Gold</td><td>—</td></tr>
-  <tr><td>L3</td><td>Blue</td><td>—</td></tr>
-</table>
+  <h2>3.2 Hand-Size Multipliers</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Cards Played</th><th>Multiplier</th><th>With Philosopher's Stone</th></tr></thead>
+    <tbody>
+      <tr><td>3 cards</td><td>×1.5</td><td>×3</td></tr>
+      <tr><td>5 cards</td><td>×2</td><td>×4</td></tr>
+      <tr><td>7 cards</td><td>×3</td><td>×6</td></tr>
+      <tr><td>10 cards</td><td>×5</td><td>×10</td></tr>
+      <tr><td>Full Hand (all cards)</td><td>×3 additional</td><td>×3 additional</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="callout">The Full Hand ×3 bonus is applied after all other multipliers — including hand-size, queen, and relic multipliers.</p>
 
-<div class="note">
-  <span class="stack">★ STACKABLE</span> — Cards marked this way fire their power once per copy when played as a same-number stack, or when they appear in a trailing same-number group at the end of a dump or chain.
+  <!-- ══ 4. CARD LEVELS ════════════════════════════════════════ -->
+  <h1 id="card-levels">4. Card Levels</h1>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Level</th><th>Colour</th><th>Starting Cards</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="gold">L0</td><td>White</td><td>3, 4, 5, 6, 9, 10, Q; Red Kings</td><td>No power. Can be upgraded.</td></tr>
+      <tr><td class="gold">L1 ★</td><td>Steel grey</td><td>A, 2, 7, 8, J; Black Kings</td><td>Power active.</td></tr>
+      <tr><td class="gold">L2 ★★</td><td>Gold</td><td>—</td><td>Enhanced power.</td></tr>
+      <tr><td class="gold">L3 ★★★</td><td>Blue</td><td>—</td><td>Maximum power.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- ══ 5. CARD POWERS ════════════════════════════════════════ -->
+  <h1 id="card-powers">5. Card Powers</h1>
+  <p>Stackable powers (★) fire independently for each copy of that card in a same-number stack or trailing chain. Queen powers stack additively by default; multiplicatively with Blood Pact.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:50px">Card</th>
+        <th style="width:60px">Stack</th>
+        <th>L1</th>
+        <th>L2</th>
+        <th>L3</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="gold center">A</td>
+        <td class="no center">—</td>
+        <td>Always playable. Declare active suit for the next card.</td>
+        <td>Declare + draw 1 card.</td>
+        <td>Declare + draw 2 cards.</td>
+      </tr>
+      <tr>
+        <td class="gold center">2</td>
+        <td class="yes center">★</td>
+        <td>Draw 2 cards.</td>
+        <td>Draw 4 cards.</td>
+        <td>Draw 6 cards.</td>
+      </tr>
+      <tr>
+        <td class="gold center">3</td>
+        <td class="yes center">★</td>
+        <td>+3% free relic chance at round end.</td>
+        <td>+6%.</td>
+        <td>+9%.</td>
+      </tr>
+      <tr>
+        <td class="gold center">4</td>
+        <td class="no center">—</td>
+        <td>Return 1 card from discard pile to hand.</td>
+        <td>Return up to 2 cards.</td>
+        <td>Return up to 3 cards.</td>
+      </tr>
+      <tr>
+        <td class="gold center">5</td>
+        <td class="no center">—</td>
+        <td><em>Passive:</em> +50 pts per hand while held in hand (not played).</td>
+        <td>+100 pts per hand.</td>
+        <td>+150 pts per hand.</td>
+      </tr>
+      <tr>
+        <td class="gold center">6</td>
+        <td class="yes center">★</td>
+        <td>Recover 1 free discard.</td>
+        <td>Recover 2 free discards.</td>
+        <td>Grant +2 extra discards beyond the cap.</td>
+      </tr>
+      <tr>
+        <td class="gold center">7</td>
+        <td class="no center">—</td>
+        <td>Opens a suit dump. If 7 becomes new middle, dump opens next hand.</td>
+        <td>Dump scores ×1.5.</td>
+        <td>Dump scores ×2.</td>
+      </tr>
+      <tr>
+        <td class="gold center">8</td>
+        <td class="yes center">★</td>
+        <td>+1 hand.</td>
+        <td>+2 hands.</td>
+        <td>+3 hands.</td>
+      </tr>
+      <tr>
+        <td class="gold center">9</td>
+        <td class="yes center">★</td>
+        <td>Wild suit — matches anything. No other effect at L1.</td>
+        <td>Wild + reshuffle hand into deck, draw 7.</td>
+        <td>Wild + reshuffle hand, draw 9.</td>
+      </tr>
+      <tr>
+        <td class="gold center">10</td>
+        <td class="yes center">★</td>
+        <td>+100 pts added to next hand scored (Surge).</td>
+        <td>+200 pts Surge.</td>
+        <td>+300 pts Surge.</td>
+      </tr>
+      <tr>
+        <td class="gold center">J</td>
+        <td class="no center">—</td>
+        <td>Free play (no hand cost) + 1 bonus slot.</td>
+        <td>Free play + draw 1 + 1 bonus slot.</td>
+        <td>Free play + draw 1 + 2 bonus slots.</td>
+      </tr>
+      <tr>
+        <td class="gold center">Q</td>
+        <td class="yes center">★</td>
+        <td>Next hand ×2 multiplier (additive).</td>
+        <td>+×3 per queen played.</td>
+        <td>+×4 per queen played.</td>
+      </tr>
+      <tr>
+        <td class="gold center">K</td>
+        <td class="yes center">★</td>
+        <td>Draw 5 cards.</td>
+        <td>Draw 6 cards.</td>
+        <td>Draw 7 cards.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout blue">
+    <strong>Jack Bonus Slots:</strong> After a Jack, bonus slots let you stage additional cards matching the <em>suit or number</em> of the last non-Jack staged card. L1/L2 = 1 slot; L3 = 2 slots.
+  </div>
+  <div class="callout">
+    <strong>Queen Stacking:</strong> Default is additive — playing 3× L2 Queens = ×9 on the next hand. With <strong>Blood Pact</strong> relic this becomes multiplicative (3× L2 = ×27), but each Queen costs 1 extra hand.
+  </div>
+
+  <!-- ══ 6. RELICS ═════════════════════════════════════════════ -->
+  <h1 id="relics">6. Relics</h1>
+  <p>One relic is chosen before round 1 from a pool of 3 (no legendaries at start). More are earned through boss rounds and Lucky 3 card power. Relics persist for the entire run.</p>
+
+  <h2 id="common">6.1 Common <span class="tier tier-common">Common</span></h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">Relic</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>💀 Dead Man's Hand</td><td>Aces score 200 pts instead of 110.</td></tr>
+      <tr><td>🔗 Daisy Chain</td><td>Each card after the first in any multi-card hand adds +25 flat bonus.</td></tr>
+      <tr><td>💰 Penny Pincher</td><td>Each unused free discard at round end upgrades a random L0 card in your deck to L1.</td></tr>
+      <tr><td>⚡ Swift Hand</td><td>Gain +1 extra hand next round for every 3 unused hands this round (max +2).</td></tr>
+      <tr><td>💛 Heart of Gold</td><td>Hearts score +20 bonus pts each.</td></tr>
+      <tr><td>🕳️ Ace in the Hole</td><td>After each successful round, a random Ace is added to your deck.</td></tr>
+      <tr><td>🗑️ Trashman</td><td>+1 free discard per round. Stackable — each copy adds another +1.</td></tr>
+      <tr><td>🎒 Full House</td><td>Once per round, discard your entire hand and draw 7 fresh cards.</td></tr>
+      <tr><td>⚒️ The Anvil</td><td>Playing a card that matches the middle card's number scores +150 bonus.</td></tr>
+      <tr><td>🧩 Odd Fit</td><td>Cards that match by number only (not suit) each score +40 bonus.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="uncommon">6.2 Uncommon <span class="tier tier-uncommon">Uncommon</span></h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">Relic</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>🃏 The Fool</td><td>Your first hand played each round scores ×2.</td></tr>
+      <tr><td>🩸 Blood Pact</td><td>Queens stack multiplicatively instead of additively (3× L3 Queens = ×64), but each Queen costs 1 extra hand.</td></tr>
+      <tr><td>🪬 Ward</td><td>Once per round, if you would run out of hands, prevent it and draw 2 cards instead.</td></tr>
+      <tr><td>💥 Chain Reaction</td><td>Playing multiple 2s multiplies their draw values instead of adding. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn.</td></tr>
+      <tr><td>🌙 Night Market</td><td>See 8 cards instead of 6 for Add, Remove, and Upgrade reward choices.</td></tr>
+      <tr><td>🦊 Fox's Gambit</td><td>Each Jack played draws 1 extra card.</td></tr>
+      <tr><td>🐰 White Rab</td><td>Same-number cards in a hand multiply the score: 2 matching = ×2, 3 = ×3, and so on.</td></tr>
+      <tr><td>⚙️ On The Gear</td><td>On acquisition: 5 random cards in your deck are upgraded by 1 level (max L3).</td></tr>
+      <tr><td>🎲 Fuck That</td><td>3 charges. Re-roll any reward screen option. Relic is destroyed when all charges are spent (returns to pool).</td></tr>
+      <tr><td>🎲 Gambler's Chip</td><td>After each hand, one random card in your hand is always legal to play regardless of the middle card.</td></tr>
+      <tr><td>🔫 Rapid Shooter</td><td>In multi-card hands, 2s, 6s, 8s, and Ks that are not the last card also fire their power.</td></tr>
+      <tr><td>⏰ Late Guy</td><td>Hands scored with 3 or fewer hands remaining score double.</td></tr>
+      <tr><td>🗺️ Do Where Labs On?</td><td>At the start of each round, play the first middle card yourself from your hand. No points scored for it.</td></tr>
+      <tr><td>🔄 Cover My Shift?</td><td>Consume to re-roll the current boss. Button appears on the boss splash screen. Returns to relic pool after use.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="rare">6.3 Rare <span class="tier tier-rare">Rare</span></h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">Relic</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>🔍 Treasure Hunter</td><td>Lucky 3 chance from 3s is doubled (L1: +6%, L2: +12%, L3: +18% per card).</td></tr>
+      <tr><td>🎯 Sniper</td><td>Single-card hands score ×6.</td></tr>
+      <tr><td>🔥 Wildfire</td><td>In a suit dump or chain, every card after the 3rd scores double.</td></tr>
+      <tr><td>👑 The Crown</td><td>If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%.</td></tr>
+      <tr><td>🌑 Eclipse</td><td>Each time your deck reshuffles during a round, score +3,000 bonus points.</td></tr>
+      <tr><td>🏦 The Vault</td><td>For the next 3 rounds after acquisition, you get 3 reward choices instead of 2.</td></tr>
+      <tr><td>📒 Can I See Your Logbook?</td><td>Choose one relic you already own — its effect is duplicated. Stackable relics add another stack.</td></tr>
+      <tr><td>🪟 Mirror Image</td><td>Immediately duplicates every card in your deck, hand, and discard pile.</td></tr>
+      <tr><td>🃏 Cunts got cairds?</td><td>Pick UP TO 2 cards from the Add and Upgrade reward screens each time.</td></tr>
+      <tr><td>🎨 Colorblind</td><td>Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit.</td></tr>
+      <tr><td>👑 On Yersel Hen!</td><td>Each Queen held in hand (not played) multiplies the final hand score by ×1.5. Stacks exponentially.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="legendary">6.4 Legendary <span class="tier tier-legendary">Legendary</span></h2>
+  <p>Legendaries cannot appear in the starting relic pick. They appear at normal (very low) probability in reward screens, or are guaranteed after beating a Legend Killer boss.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">Relic</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>🪨 Philosopher's Stone</td><td>Multi-card hand size bonuses are doubled: ×1.5→×3, ×2→×4, ×3→×6, ×5→×10.</td></tr>
+      <tr><td>🐍 Hydra</td><td>For every card you discard, draw 2 additional cards from the deck.</td></tr>
+      <tr><td>🌌 The Void</td><td>Each time your deck reshuffles during a round, gain a free relic choice at the end of that round.</td></tr>
+      <tr><td>🌊 Crimson Tide</td><td>Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds).</td></tr>
+      <tr><td>🔢 Dyscalculia</td><td>Every card scores exactly 250 base points, regardless of its number.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- ══ 7. ROUND STRUCTURE ════════════════════════════════════ -->
+  <h1 id="round-structure">7. Round Structure</h1>
+
+  <h2>7.1 Tier System</h2>
+  <ul>
+    <li>24 base game rounds — Tiers 1–8, 3 rounds per tier.</li>
+    <li>Round 3 of each tier is a Boss Round.</li>
+    <li>30 endless mode rounds — Tiers 9–18 (rounds 25–54) — unlocked after clearing Tier 8.</li>
+    <li>Round 54 ends the endless run.</li>
+  </ul>
+
+  <h2>7.2 Score Targets (selected)</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Round</th><th>Tier</th><th>Type</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>1</td><td>Normal</td><td>300 pts</td></tr>
+      <tr><td>3</td><td>1</td><td>Boss</td><td>varies by boss</td></tr>
+      <tr><td>8</td><td>3</td><td>Boss</td><td>2,000 pts</td></tr>
+      <tr><td>12</td><td>4</td><td>Boss</td><td>4,300 pts</td></tr>
+      <tr><td>24</td><td>8</td><td>Boss — Tier 8 Final</td><td>25,000 pts</td></tr>
+      <tr><td>27</td><td>9</td><td>Endless Boss</td><td>37,000 pts</td></tr>
+      <tr><td>36</td><td>12</td><td>Endless Boss</td><td>190,000 pts</td></tr>
+      <tr><td>54</td><td>18</td><td>Endless Boss — Final</td><td>5,400,000 pts</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>7.3 Reward Screen</h2>
+  <p>After each round, choose 2 rewards (3 with The Vault relic):</p>
+  <ul>
+    <li><strong>Add Card</strong> — add 1 card to your deck</li>
+    <li><strong>Remove Cards</strong> — remove up to 2 cards from your deck</li>
+    <li><strong>Upgrade Card</strong> — upgrade 1 card by 1 level (max L3)</li>
+    <li><strong>Gain Relic</strong> — choose 1 relic (boss rounds only, not round 24)</li>
+  </ul>
+  <p>Boss wins also grant <strong>+1 reroll charge</strong>, usable on any reward screen option.</p>
+  <p><strong>Lucky 3:</strong> if 3-card powers have accumulated sufficient chance, a free bonus relic pick fires at round end.</p>
+  <p><strong>The Void:</strong> each deck reshuffle during the round grants an additional free relic pick at round end.</p>
+
+  <!-- ══ 8. BOSSES ══════════════════════════════════════════════ -->
+  <h1 id="bosses">8. Bosses</h1>
+  <p>Bosses are randomly shuffled into boss slots each run. The target multiplier is applied to the round's normal score target. Dynamic fields (cursed number, Joker penalty, Glass Ceiling cap, disabled relic count) are resolved when the round starts.</p>
+
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">Boss</th><th>Effect</th><th style="width:90px;text-align:center">Target</th></tr></thead>
+    <tbody>
+      <tr><td>⛓️ The Warden</td><td>Max hand size reduced to 12 for this round.</td><td class="center">×1.0</td></tr>
+      <tr><td>💸 The Usurer</td><td>Paid discards cost 2 hands each instead of 1. Free discards still work normally.</td><td class="center">×1.0</td></tr>
+      <tr><td>🎯 The Marksman</td><td>Dealt 26 cards; must beat the target in a single hand; 5 free discards available.</td><td class="center">×0.9</td></tr>
+      <tr><td>🩸 The Hexer</td><td>A random card number is treated as L0 for this round. Restored after win.</td><td class="center">×0.85</td></tr>
+      <tr><td>⏳ The Eroder</td><td>Each successive hand scores 10% less than the previous (floor 30%). Hand 1=100%, Hand 2=90%…</td><td class="center">×0.65</td></tr>
+      <tr><td>🔒 The Purist</td><td>Number matching and same-number stacking disabled. Suit-only matching (Aces, 7s, wild 9s still work normally).</td><td class="center">×0.65</td></tr>
+      <tr><td>⚗️ The Alchemist</td><td>All L0 cards removed from deck for this round. Returned after win.</td><td class="center">×1.4</td></tr>
+      <tr><td>✊ The Anarchist</td><td>All Jacks, Queens, and Kings removed from deck for this round. Returned after win.</td><td class="center">×0.7</td></tr>
+      <tr><td>🔵 Performance Anxiety</td><td>1 relic is disabled per 6 rounds travelled into the run. Restored after win.</td><td class="center">×0.85</td></tr>
+      <tr><td>✂️ Halfman</td><td>All final hand scores are halved after all other bonuses are applied.</td><td class="center">×0.65</td></tr>
+      <tr><td>👕 Casual Wear!</td><td>All cards can be played on any middle card regardless of suit. Number matching still applies.</td><td class="center">×1.7</td></tr>
+      <tr><td>⚡ Legend Killer</td><td>Target score greatly increased. Clearing guarantees a Legendary relic choice.</td><td class="center">×1.75</td></tr>
+      <tr><td>🧈 Butter Fingers</td><td>After each hand, 1 random card is discarded from your hand (no replacement unless hand drops below 7).</td><td class="center">×0.8</td></tr>
+      <tr><td>🟥 Surface-Level Communism</td><td>Card levels, tooltips, and suit colours hidden. Powers still function normally.</td><td class="center">×0.8</td></tr>
+      <tr><td>🚫 No Mimics</td><td>The number(s) in your last hand cannot be played in the next hand. Resets each hand.</td><td class="center">×0.75</td></tr>
+      <tr><td>⚡ Overclock</td><td>All hands score ×2, but 20% chance any given hand scores nothing instead.</td><td class="center">×1.0</td></tr>
+      <tr><td>🗑️ Dr. Wilson</td><td>Fixed target: 400 pts (base) / 1,000 pts (endless). Every card played is permanently destroyed for the rest of the run.</td><td class="center">—</td></tr>
+      <tr><td>👾 Glitch</td><td>At the start of every hand, the middle card's suit is randomised.</td><td class="center">×0.75</td></tr>
+      <tr><td>🪟 Glass Ceiling</td><td>Per-hand score capped by tier: 500 pts (T1–4) · 1,000 (T5–6) · 2,500 (T7–8) · ×2.5 per 2 tiers thereafter. Encourages many consistent hands.</td><td class="center">×0.5</td></tr>
+      <tr><td>🃏 The Joker</td><td>Joker cards added to deck. Each turn a Joker is held in hand: −X pts. Playing a Joker: −3X pts. X = tier × 100. Score cannot go below 0.</td><td class="center">×0.85</td></tr>
+      <tr><td>🚿 Leaky Pisser</td><td>Each paid discard subtracts 5% of the target score from your current score. Free discards are unaffected.</td><td class="center">×0.75</td></tr>
+      <tr><td>🔁 Feedback Loop</td><td>After each hand, your remaining hand is shuffled back into the deck and you redraw the same number of cards.</td><td class="center">×1.1</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <!-- ══ 9. BOSS ASSIGNMENT ════════════════════════════════════ -->
+  <h1 id="boss-assignment">9. Boss Assignment</h1>
+  <ul>
+    <li>Base game: 22 bosses shuffled, 8 assigned to rounds 3, 6, 9, 12, 15, 18, 21, 24.</li>
+    <li>Endless mode: fresh shuffle, assigned to rounds 27, 30, 33 … 54 (wraps if pool exhausted).</li>
+    <li>Dynamic fields (cursed number, Joker count &amp; penalty, Performance Anxiety relic count, Glass Ceiling cap) resolved when the round starts via <code>applyBossEffects()</code>.</li>
+    <li>Debug: forced boss overrides via the debug panel write directly to <code>G.bossSchedule</code>, so <code>isBossRound()</code> returns true and the full boss flow applies.</li>
+  </ul>
+
+  <!-- ══ 10. LEGACY SYSTEM ══════════════════════════════════════ -->
+  <h1 id="legacy">10. Legacy System (Meta-Progression)</h1>
+
+  <h2>10.1 Relic Memory</h2>
+  <p>For every 3 bosses beaten in a run, the player earns 1 legacy relic pick. On clicking Play Again, the player is shown up to 3 of their current relics and chooses 1 to carry into the next run. 6 bosses cleared = 2 picks; 9 bosses = 3 picks, and so on.</p>
+  <p>Carried relics are active from the very first hand of the new run, before the player's starting relic pick.</p>
+
+  <h2>10.2 Persistence</h2>
+  <p>Legacy progress (carried relics and lifetime boss clear count) is stored in <code>localStorage</code> under the key <code>dms_legacy_v1</code> as JSON. It persists across page visits in the same browser.</p>
+  <p>Players can export their save data as a JSON string (copied to clipboard) and import it on another browser or device. A reset option clears all legacy progress from the title screen.</p>
+
+  <div class="callout">
+    <strong>Save format:</strong> <code>{ "legacyRelics": ["blood_pact", "sniper"], "totalBossesCleared": 9 }</code>
+  </div>
+
+  <!-- ══ 11. SYSTEMS SUMMARY ════════════════════════════════════ -->
+  <h1 id="systems">11. Key Systems Summary</h1>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:220px">System</th><th>Implementation Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="gold">Score preview</td><td><code>calcPreviewScore</code> mirrors <code>applyScore</code> logic including all boss modifiers, relic bonuses, hand-size multipliers, and Joker penalties. Shown on the play button and score bar.</td></tr>
+      <tr><td class="gold">Score animation</td><td><code>animateScore</code> runs a <code>requestAnimationFrame</code> loop writing to <code>hud-score</code>. Any direct score mutation (e.g. Joker tick) must call <code>cancelAnimationFrame(_scoreTween)</code> and snap <code>_displayScore</code> before calling <code>updateHUD()</code>.</td></tr>
+      <tr><td class="gold">Modal suppression</td><td>Ace suit picker and 4 Salvage modals check <code>G._roundEnding</code>, <code>G.score >= target()</code>, and <code>handsLeft() &lt;= 0</code> before showing to prevent UI appearing during round win/loss.</td></tr>
+      <tr><td class="gold">Glass Ceiling</td><td><code>getGlassCeilingCap()</code> computes the cap from the current tier. Called in both <code>applyScore</code> and <code>calcPreviewScore</code>. Cap text is set dynamically in <code>applyBossEffects</code>.</td></tr>
+      <tr><td class="gold">Open 7 propagation</td><td>Every code path that sets <code>G.middle</code> immediately follows with <code>G.openSeven = G.middle.n === '7' ? G.middle.s : null</code> so player-played 7s also open the dump for the next hand.</td></tr>
+      <tr><td class="gold">Legend Killer guarantee</td><td><code>G._legendKillerReward</code> is set in <code>endRound</code> before <code>restoreBossCards</code> clears <code>G.activeBoss</code>. Checked in <code>chooseRewardAction</code> to force one legendary into the relic pick pool.</td></tr>
+      <tr><td class="gold">wasBossRound</td><td>Determined by <code>isBossRound(G.roundNum)</code> — reads from <code>G.bossSchedule</code>, which the debug tool also writes to, so debug-forced bosses are treated identically to naturally scheduled ones.</td></tr>
+      <tr><td class="gold">Feedback Loop</td><td>Hooked into <code>postHandSettle</code> — the single post-hand function called by all execution paths (single card, chain, same-number, dump, Jack chain). Reshuffles remaining hand back, redraws same count, including any cards drawn by card powers in that hand.</td></tr>
+      <tr><td class="gold">Joker tick timing</td><td><code>tickJokersPerTurn</code> fires in <code>finishStartRound</code> (first hand) and at the end of <code>postHandSettle</code> (subsequent hands), after <code>drawUp</code> but before <code>renderActions</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <hr class="section-rule">
+  <p style="text-align:center; color:var(--dim); font-style:italic; font-size:13px;">— End of Document — v0.8.27</p>
+
+</main>
 </div>
 
-<h3>Card Power Reference</h3>
+<script>
+  // Sidebar active link tracking
+  const sections = document.querySelectorAll('h1[id], h2[id]');
+  const links = document.querySelectorAll('nav a');
 
-<table>
-  <tr><th>Card</th><th>L1</th><th>L2</th><th>L3</th><th>Notes</th></tr>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-10% 0px -80% 0px' });
 
-  <tr>
-    <td><strong>A</strong></td>
-    <td>Declare the active suit for the next card played.</td>
-    <td>Declare suit, then draw 1 card.</td>
-    <td>Declare suit, then draw 2 cards.</td>
-    <td>Always legal to play. L1 is the base effect; L2/L3 add the draw on top.</td>
-  </tr>
-
-  <tr>
-    <td><strong>2</strong><br><span class="stack">STACKABLE</span></td>
-    <td>Draw 2 cards.</td>
-    <td>Draw 4 cards.</td>
-    <td>Draw 6 cards.</td>
-    <td>With Chain Reaction relic, multiple 2s played together multiply their draw values (e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn) instead of adding them.</td>
-  </tr>
-
-  <tr>
-    <td><strong>3</strong><br><span class="stack">STACKABLE</span></td>
-    <td>+3% free-relic chance at end of round.</td>
-    <td>+6% free-relic chance at end of round.</td>
-    <td>+9% free-relic chance at end of round.</td>
-    <td>Fires whenever included in a hand, regardless of position in a chain or dump. Multiple 3s played during a round accumulate their percentages. If the roll succeeds at round end, a Lucky Three screen appears offering 3 relic choices.</td>
-  </tr>
-
-  <tr>
-    <td><strong>4</strong></td>
-    <td>Return 1 card from the discard pile to your hand.</td>
-    <td>Return up to 2 cards from the discard pile to your hand.</td>
-    <td>Return up to 3 cards from the discard pile to your hand.</td>
-    <td>4s cannot salvage other 4s.</td>
-  </tr>
-
-  <tr>
-    <td><strong>5</strong></td>
-    <td>Passive: while this 5 is held in hand (unplayed), every scored hand gains +50 pts before multipliers.</td>
-    <td>Passive: +100 pts per scored hand while held.</td>
-    <td>Passive: +150 pts per scored hand while held.</td>
-    <td>The bonus fires on every hand where the 5 is held but not played. Multiple 5s add together. Playing the 5 itself does not trigger the bonus.</td>
-  </tr>
-
-  <tr>
-    <td><strong>6</strong><br><span class="stack">STACKABLE</span></td>
-    <td>Recover 1 used free discard (restore one spent discard slot).</td>
-    <td>Recover 2 used free discards.</td>
-    <td>Grant +2 extra discards this round beyond the normal cap.</td>
-    <td></td>
-  </tr>
-
-  <tr>
-    <td><strong>7</strong></td>
-    <td>Open a suit dump. The dump scores normally.</td>
-    <td>Open a suit dump. Dump total scores ×1.5.</td>
-    <td>Open a suit dump. Dump total scores ×2.</td>
-    <td>Multiple L2/L3 7s in the same dump stack <em>multiplicatively</em>: L2+L2 = ×2.25 · L2+L3 = ×3 · L3+L3 = ×4.</td>
-  </tr>
-
-  <tr>
-    <td><strong>8</strong><br><span class="stack">STACKABLE</span></td>
-    <td>+1 hand remaining.</td>
-    <td>+2 hands remaining.</td>
-    <td>+2 hands remaining and draw 1 card.</td>
-    <td>Playing an 8 does not cost a hand.</td>
-  </tr>
-
-  <tr>
-    <td><strong>9</strong></td>
-    <td>Shuffle your entire hand back into the deck and draw 7 fresh cards.</td>
-    <td>Shuffle hand into deck, draw 8 cards.</td>
-    <td>Shuffle hand into deck, draw 9 cards.</td>
-    <td></td>
-  </tr>
-
-  <tr>
-    <td><strong>10</strong><br><span class="stack">STACKABLE</span></td>
-    <td>Add +100 pts to your next scored hand.</td>
-    <td>Add +200 pts to your next scored hand.</td>
-    <td>Add +300 pts to your next scored hand.</td>
-    <td>Bonus is stored as a surge and applied to the next hand's flat total. Multiple 10s played in one go accumulate additively into one surge pool.</td>
-  </tr>
-
-  <tr>
-    <td><strong>J</strong></td>
-    <td>Free play — does not consume a hand.</td>
-    <td>Free play. Draw 1 card. Grant 1 bonus staging slot after this Jack.</td>
-    <td>Free play. Draw 2 cards. Grant 2 bonus staging slots after this Jack.</td>
-    <td>Always legal to stage after another Jack. See Jack Chain Rules for bonus slot behaviour.</td>
-  </tr>
-
-  <tr>
-    <td><strong>Q</strong></td>
-    <td>Next scored hand ×2.</td>
-    <td>Next scored hand ×3.</td>
-    <td>Next scored hand ×4.</td>
-    <td>Multiple Queens stack <em>multiplicatively</em>: L1+L1 = ×4 · L1+L2 = ×6 · L2+L2 = ×9 · L3+L3 = ×16. Blood Pact relic raises the base multiplier from ×2 to ×3 (costs 1 extra hand). Crimson Tide relic permanently increases the base multiplier by +1 each time any Queen is played, stacking across rounds.</td>
-  </tr>
-
-  <tr>
-    <td><strong>K</strong><br><span class="stack">STACKABLE</span></td>
-    <td>Draw 5 cards.</td>
-    <td>Draw 6 cards.</td>
-    <td>Draw 7 cards.</td>
-    <td>Black Kings (♠♣) start at L1. Red Kings (♥♦) start at L0.</td>
-  </tr>
-</table>
-
-<!-- ══════════════════════════════════════════ SCORING ORDER -->
-<h2>Scoring Order</h2>
-<p>Each hand is scored in the following sequence. All additive bonuses accumulate into <em>raw</em> before any multiplier is applied.</p>
-<ol>
-  <li>Base card scores (face value × 10, or 110 for A/J/Q/K)</li>
-  <li><strong>Philosopher's Stone</strong> — raise raw to minimum 100 × card count if below</li>
-  <li>Per-card number bonuses — Dusty Tome (+50 per J), Tin Star (+50 per Q)</li>
-  <li>Per-card suit bonuses — Heart of Gold, Club House, Spade Work, Diamond Eye (+20 per matching card)</li>
-  <li><strong>Odd Fit</strong> — +40 per card that matched by number only (not suit)</li>
-  <li><strong>On Yersel Hen!</strong> — +100 per unplayed Queen currently held in hand</li>
-  <li><strong>The Anvil</strong> — +150 if the played card (single-card hand only) matches the middle card's number</li>
-  <li><strong>Daisy Chain</strong> — +25 per card after the first in any multi-card hand</li>
-  <li><strong>Surge bonus</strong> — carried forward from previous 10-power play</li>
-  <li><strong>5 passive</strong> — +50/100/150 per L1/L2/L3 Five held in hand (not played), added to raw before multipliers</li>
-  <li><strong>Hand-size multiplier</strong> — ×1.5 (3 cards) / ×2 (5) / ×3 (7) / ×5 (10+)</li>
-  <li><strong>White Rab</strong> — largest same-number group within the hand multiplies score (2 matching = ×2, 3 = ×3 …)</li>
-  <li><strong>The Fool</strong> — ×2 (first hand of round only)</li>
-  <li><strong>Sniper</strong> — ×3 (single-card hands only)</li>
-  <li><strong>Diminishing boss</strong> — progressive reduction (Hand 1 = 100 %, Hand 2 = 90 % … floor 30 %)</li>
-  <li><strong>Queen multiplier</strong> — multiplicative stack of all active Queen mults</li>
-  <li><strong>Full Hand ×3</strong> — if every card in hand was played at once</li>
-</ol>
-<p>For 7-dump hands, dump multipliers (from L2/L3 7s) are applied to the entire dump total and are factored in before the hand reaches applyScore.</p>
-
-<!-- ══════════════════════════════════════════ ROUND STRUCTURE -->
-<h2>Round Structure</h2>
-<p>24 rounds total, 8 hands and 4 free discards each. Boss rounds: 3, 6, 9, 12, 15, 18, 21, 24.</p>
-
-<h3>Score Targets</h3>
-<table>
-  <tr><th>Round</th><th>Target</th><th>Round</th><th>Target</th><th>Round</th><th>Target</th></tr>
-  <tr><td>1</td><td>300</td><td>9 ★</td><td>2,450</td><td>17</td><td>9,500</td></tr>
-  <tr><td>2</td><td>420</td><td>10</td><td>2,950</td><td>18 ★</td><td>11,000</td></tr>
-  <tr><td>3 ★</td><td>560</td><td>11</td><td>3,500</td><td>19</td><td>12,500</td></tr>
-  <tr><td>4</td><td>800</td><td>12 ★</td><td>4,300</td><td>20</td><td>14,500</td></tr>
-  <tr><td>5</td><td>1,000</td><td>13</td><td>5,100</td><td>21 ★</td><td>17,000</td></tr>
-  <tr><td>6 ★</td><td>1,250</td><td>14</td><td>6,000</td><td>22</td><td>19,500</td></tr>
-  <tr><td>7</td><td>1,550</td><td>15 ★</td><td>7,100</td><td>23</td><td>22,000</td></tr>
-  <tr><td>8</td><td>2,000</td><td>16</td><td>8,500</td><td>24 ★</td><td>25,000</td></tr>
-</table>
-<p>★ = Boss round. The boss may further modify the effective target (see Bosses).</p>
-
-<h3>Reward Flow</h3>
-<p>After clearing a round you choose <strong>2 rewards</strong> (3 with The Vault active) from the following pool:</p>
-<ul>
-  <li><strong>Add</strong> — add one card to your deck (every round). Boss rounds always offer minimum L1 cards.</li>
-  <li><strong>Subtract</strong> — remove up to 2 cards from your deck (every round).</li>
-  <li><strong>Upgrade</strong> — upgrade one card in your deck by one level, max L3 (every round).</li>
-  <li><strong>Relic</strong> — choose one of 3 relics to keep permanently (boss rounds only).</li>
-</ul>
-<p>The <strong>Cunts got cairds?</strong> relic extends Add and Upgrade selections to up to 2 cards each. Reward screens default to showing 6 options; Night Market extends this to 8.</p>
-
-<h3>Lucky Three</h3>
-<p>Accumulated free-relic chance from 3-power plays is rolled at round end. On a success, a bonus screen appears before the normal reward screen where you pick one of three relics for free. Reroll charges can be used on this screen.</p>
-
-<h3>Reroll Charges</h3>
-<p>Each boss victory grants +1 reroll charge. Fuck That grants 3 charges on acquisition. Charges can be spent on any reward screen, including Lucky Three, to re-generate the options.</p>
-
-<!-- ══════════════════════════════════════════ BOSSES -->
-<h2>Boss Encounters</h2>
-<p>One boss is assigned to each of the eight boss rounds (3, 6, 9 … 24) in a shuffled sequence. The boss's target modifier is applied on top of any relic effects.</p>
-<table>
-  <tr><th>Name</th><th>Rule</th><th>Target ×</th></tr>
-  <tr><td>⛓️ The Warden</td><td>Maximum hand size reduced to 12 for this round.</td><td>×1.00</td></tr>
-  <tr><td>💸 The Usurer</td><td>Paid discards (beyond free limit) cost 2 hands each instead of 1.</td><td>×1.00</td></tr>
-  <tr><td>🎯 The Marksman</td><td>Dealt 26 cards. Must beat the target in a single hand. 5 free discards. No further hands after first play.</td><td>×0.85</td></tr>
-  <tr><td>🩸 The Hexer</td><td>One random number is treated as L0 for the round (power disabled). Returns to full power after the round.</td><td>×0.85</td></tr>
-  <tr><td>⏳ The Eroder</td><td>Each successive hand scores 10% less than the previous (floor 30%). Hand 1 = 100%, Hand 2 = 90% …</td><td>×0.65</td></tr>
-  <tr><td>🔒 The Purist</td><td>Number matching disabled. Cards must match suit only. Same-number stacking also disabled.</td><td>×0.85</td></tr>
-  <tr><td>⚗️ The Alchemist</td><td>All L0 cards removed from deck for this round (returned on win).</td><td>×1.40</td></tr>
-  <tr><td>✊ The Anarchist</td><td>All Jacks, Queens, and Kings removed from deck for this round (returned on win).</td><td>×0.70</td></tr>
-</table>
-
-<!-- ══════════════════════════════════════════ RELICS -->
-<h2>Relics</h2>
-
-<h3>Common <span class="tag common">common</span></h3>
-<table>
-  <tr><th>Relic</th><th>Effect</th></tr>
-  <tr><td>💀 Dead Man's Hand</td><td>Aces score 200 pts instead of 110.</td></tr>
-  <tr><td>🔗 Daisy Chain</td><td>In any multi-card hand, each card after the first adds +25 flat bonus.</td></tr>
-  <tr><td>💰 Penny Pincher</td><td>Each unused free discard at round end upgrades a random L0 card in your deck to L1.</td></tr>
-  <tr><td>⚡ Swift Hand</td><td>Gain +1 extra hand next round for every 3 unused hands this round (max +2).</td></tr>
-  <tr><td>📖 Dusty Tome</td><td>Jacks score +50 bonus points each.</td></tr>
-  <tr><td>💛 Heart of Gold</td><td>Hearts score +20 bonus points each.</td></tr>
-  <tr><td>🕳️ Ace in the Hole</td><td>After each successful round, a random Ace is added to your deck.</td></tr>
-  <tr><td>🗑️ Trashman</td><td>+1 free discard per round. Can be taken multiple times — each copy adds another +1.</td></tr>
-  <tr><td>♣️ Club House</td><td>Clubs score +20 bonus points each.</td></tr>
-  <tr><td>♠️ Spade Work</td><td>Spades score +20 bonus points each.</td></tr>
-  <tr><td>♦️ Diamond Eye</td><td>Diamonds score +20 bonus points each.</td></tr>
-  <tr><td>⭐ Tin Star</td><td>Queens score +50 bonus points each.</td></tr>
-  <tr><td>🐀 Pack Rat</td><td>Increases your maximum hand size by 4 (on top of the standard half-deck cap).</td></tr>
-  <tr><td>🐇 Rabbit Foot</td><td>When you draw the last card from the deck, draw one extra card.</td></tr>
-  <tr><td>🎒 Full House</td><td>Once per round, discard your entire hand and draw 7 fresh cards.</td></tr>
-  <tr><td>🧩 Odd Fit</td><td>Cards that match by number only (not suit) each score +40 bonus.</td></tr>
-  <tr><td>⚒️ The Anvil</td><td>Playing a single card that matches the middle card's number scores +150 bonus.</td></tr>
-</table>
-
-<h3>Uncommon <span class="tag uncommon">uncommon</span></h3>
-<table>
-  <tr><th>Relic</th><th>Effect</th></tr>
-  <tr><td>🃏 The Fool</td><td>Your first hand played each round scores ×2.</td></tr>
-  <tr><td>🩸 Blood Pact</td><td>Queens multiply by ×3 instead of ×2, but cost 1 extra hand when played.</td></tr>
-  <tr><td>🪬 Ward</td><td>Once per round, if you would run out of hands, prevent it and draw 2 cards instead.</td></tr>
-  <tr><td>💥 Chain Reaction</td><td>Playing multiple 2s together multiplies their draw values instead of adding. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn.</td></tr>
-  <tr><td>🪞 Mirror Shard</td><td>The first card you discard each round does not count against your free discard limit.</td></tr>
-  <tr><td>🌙 Night Market</td><td>See 8 cards instead of 6 for Add, Remove, and Upgrade choices on the reward screen.</td></tr>
-  <tr><td>🦊 Fox's Gambit</td><td>Each Jack played draws 1 extra card (in addition to the Jack's own L2/L3 draw).</td></tr>
-  <tr><td>🐰 White Rab</td><td>Same-number cards in a hand multiply the score: 2 matching = ×2, 3 matching = ×3, and so on. Applies even within a larger multi-card play.</td></tr>
-  <tr><td>⚙️ On The Gear</td><td>On acquisition: 5 random cards in your deck are immediately upgraded by one level (max L3).</td></tr>
-  <tr><td>🎲 Fuck That</td><td>3 charges. Spend 1 charge to re-roll any reward screen option (add/remove/upgrade/relic). Charges do not replenish. When all 3 are used the relic is destroyed and returns to the pool.</td></tr>
-  <tr><td>🎲 Gambler's Chip</td><td>After each hand, one random card in your hand is always legal to play next turn, regardless of the middle card.</td></tr>
-  <tr><td>🗺️ Do Where Labs On?</td><td>At the start of each round, you play the first middle card yourself from your hand. No points are scored for it.</td></tr>
-</table>
-
-<h3>Rare <span class="tag rare">rare</span></h3>
-<table>
-  <tr><th>Relic</th><th>Effect</th></tr>
-  <tr><td>🎯 Sniper</td><td>Single-card hands score ×3.</td></tr>
-  <tr><td>🔥 Wildfire</td><td>In a suit dump or chain, every card after the 3rd scores double.</td></tr>
-  <tr><td>👑 The Crown</td><td>If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%.</td></tr>
-  <tr><td>🌑 Eclipse</td><td>Once per round, when you draw from an empty deck, the discard pile reshuffles back in automatically.</td></tr>
-  <tr><td>🏦 The Vault</td><td>For the next 3 rounds after acquisition, you receive 3 reward choices instead of 2.</td></tr>
-  <tr><td>📒 Can I See Your Logbook?</td><td>Choose one relic you already own — its effect is duplicated. Stackable relics like Trashman add another stack.</td></tr>
-  <tr><td>🪟 Mirror Image</td><td>Immediately duplicates every card in your deck, hand, and discard pile.</td></tr>
-  <tr><td>🎨 Colorblind</td><td>Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit.</td></tr>
-  <tr><td>👑 On Yersel Hen!</td><td>Each hand you play scores +100 for every unplayed Queen currently held in your hand.</td></tr>
-  <tr><td>🃏 Cunts got cairds?</td><td>You may now pick <strong>up to 2 cards</strong> from the Add and Upgrade reward screens each time.</td></tr>
-</table>
-
-<h3>Legendary <span class="tag legendary">legendary</span></h3>
-<table>
-  <tr><th>Relic</th><th>Effect</th></tr>
-  <tr><td>🪨 Philosopher's Stone</td><td>Every card you play scores at least 100 pts, regardless of base value. Applied before all other bonuses.</td></tr>
-  <tr><td>🐍 Hydra</td><td>For every card you discard, draw 3 additional cards from the deck.</td></tr>
-  <tr><td>🌌 The Void</td><td>Your deck never runs out. Whenever it empties mid-draw, the discard pile reshuffles back in — every time, with no limit.</td></tr>
-  <tr><td>🌊 Crimson Tide</td><td>Every Queen played permanently increases all future Queen base multipliers by +1. Stacks across rounds.</td></tr>
-</table>
-
-<!-- ══════════════════════════════════════════ PROGRESSION -->
-<h2>Reward Progression</h2>
-<h3>Relic Tier Weights</h3>
-<table>
-  <tr><th>Tier</th><th>Pool Weight</th></tr>
-  <tr><td>Common</td><td>1.0</td></tr>
-  <tr><td>Uncommon</td><td>0.25</td></tr>
-  <tr><td>Rare</td><td>0.067</td></tr>
-  <tr><td>Legendary</td><td>0.02</td></tr>
-</table>
-<p><strong>Special rules:</strong> Trashman has 1.5× weight. Can I See Your Logbook? only appears if you own at least one relic. Blood Pact and Crimson Tide require an L1+ Queen in your deck. Mirror Shard is excluded from normal reward pools (Lucky Three only).</p>
-
-<h3>Card Level Distribution (Add reward)</h3>
-<p>Early rounds offer predominantly L0–L1 cards. The pool shifts toward L2 and L3 in later rounds. Boss round Add rewards always guarantee minimum L1 cards.</p>
-
-</div>
+  sections.forEach(s => obs.observe(s));
+</script>
 </body>
 </html>
