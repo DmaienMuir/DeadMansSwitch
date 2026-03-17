@@ -1,4 +1,4 @@
-# Dead Man's Switch — v0.8.27
+# Dead Man's Switch — v0.8.32
 
 A survival roguelike built on Switch card game rules. Single HTML file, no dependencies.
 
@@ -17,8 +17,8 @@ Beat the round's score target before you run out of hands.
 | Rule | Detail |
 |------|--------|
 | Hand size cap | `ceil(totalCards / 2)` where totalCards = deck + hand + discard |
-| Free discards | 4 per round. Each discard draws 1 replacement. Paid discards cost 1 hand (2 with The Usurer boss). |
-| 7 Dump | Playing a 7 opens a suit dump — play any number of cards of that suit in sequence. Only the final card fires its power (except 3s). |
+| Free discards | 5 per round. Each discard draws 1 replacement. Paid discards cost 1 hand (2 with The Usurer boss). |
+| 7 Dump | Playing a 7 opens a suit dump — play any number of that suit in sequence. If the new middle card is a 7 (player-played or otherwise), the dump opens immediately for the next hand. |
 | Same-number stack | Multiple cards of the same number played simultaneously. Each stackable power fires independently. |
 | Jack chain | Jacks don't consume a hand. They grant bonus slots for follow-up cards. |
 | Ace | Always playable. Declares the active suit for the next card. |
@@ -33,6 +33,7 @@ Beat the round's score target before you run out of hands.
 - **A, J, Q, K:** 110 pts each
 - **Hand-size multipliers:** 3 cards ×1.5 · 5 cards ×2 · 7 cards ×3 · 10 cards ×5
 - **Full Hand bonus:** ×3 (applied after all other multipliers)
+- **Score display:** values ≥ 1,000,000,000 shown in scientific notation (e.g. `1.234e9`)
 
 ---
 
@@ -45,39 +46,37 @@ Beat the round's score target before you run out of hands.
 | L2 ★★ | Gold | Enhanced power |
 | L3 ★★★ | Blue | Maximum power |
 
-Cards that always start at L1: **A, 2, 7, 8, J**
+Cards that always start at L1: **A, 2, 7, 8, J**. Black Kings L1; Red Kings L0.
 
-Black Kings start at L1; Red Kings start at L0.
-
-Cards that start at L0 (can be upgraded): 3, 4, 5, 6, 9, 10, Q
+Cards that start at L0 (upgradeable): 3, 4, 5, 6, 9, 10, Q
 
 ---
 
 ## Card Powers
 
-Stackable powers (★) fire independently for each card of that number in a same-number stack or trailing chain.
+Stackable powers (★) fire independently for each copy in a same-number stack or trailing chain.
 
 | Card | Stackable | L1 | L2 | L3 |
 |------|-----------|----|----|-----|
 | **A** | | Declare suit for next card | Declare + draw 1 | Declare + draw 2 |
-| **2** | ★ | Draw 2 cards | Draw 4 cards | Draw 6 cards |
+| **2** | ★ | Draw 2 cards | Draw 4 | Draw 6 |
 | **3** | ★ | +3% free relic chance at round end | +6% | +9% |
 | **4** | | Return 1 card from discard to hand | Return up to 2 | Return up to 3 |
-| **5** | | Passive: +50 pts per hand while held in hand (not played) | +100 pts | +150 pts |
-| **6** | ★ | Recover 1 free discard | Recover 2 free discards | Grant +2 extra discards beyond cap |
-| **7** | | Opens a suit dump | Dump scores ×1.5 | Dump scores ×2 |
+| **5** | | Passive: +50 pts per hand while held (not played) | +100 pts | +150 pts |
+| **6** | ★ | Recover 1 free discard | Recover 2 | Grant +2 extra discards beyond cap |
+| **7** | | Opens a suit dump | Dump ×1.5 | Dump ×2 |
 | **8** | ★ | +1 hand | +2 hands | +3 hands |
-| **9** | ★ | Wild suit — matches anything (no power) | Wild + reshuffle hand, draw 7 | Wild + reshuffle hand, draw 9 |
-| **10** | ★ | +100 pts added to next hand scored | +200 pts | +300 pts |
-| **J** | | Free play (no hand cost) + 1 bonus slot | Free play + draw 1 + 1 bonus slot | Free play + draw 1 + 2 bonus slots |
-| **Q** | ★ | Next hand ×2 multiplier (additive stacking) | ×3 per queen | ×4 per queen |
-| **K** | ★ | Draw 5 cards | Draw 6 cards | Draw 7 cards |
+| **9** | ★ | Wild suit — matches anything (no power) | Wild + reshuffle hand, draw 7 | Wild + reshuffle, draw 9 |
+| **10** | ★ | +100 pts to next hand scored | +200 pts | +300 pts |
+| **J** | | Free play + 1 bonus slot | Free play + draw 1 + 1 bonus slot | Free play + draw 1 + 2 bonus slots |
+| **Q** | ★ | Next hand ×2 multiplier (additive) | ×3 per queen | ×4 per queen |
+| **K** | ★ | Draw 5 cards | Draw 6 | Draw 7 |
 
-**Jack bonus slots:** After a Jack, bonus slots let you stage additional cards matching the suit OR number of the last non-Jack staged card.
+**Jack bonus slots:** Stage additional cards matching the suit OR number of the last non-Jack staged card.
 
-**Queen stacking (default):** Additive. Playing 3× L2 Queens = ×9 on the next hand. With Blood Pact relic: multiplicative.
+**Queen stacking:** Additive by default. 3× L2 Queens = ×9. Multiplicative with Blood Pact.
 
-**7 and open middles:** If the new middle card after any play is a 7, the dump immediately becomes available for the next hand.
+**Power Surge relic:** The first power card played each hand fires twice — all draw/recover/hand counts are doubled for that card.
 
 ---
 
@@ -85,115 +84,117 @@ Stackable powers (★) fire independently for each card of that number in a same
 
 - **24 base game rounds** (Tiers 1–8, 3 rounds per tier). Round 3 of each tier is a Boss Round.
 - **30 endless mode rounds** (Tiers 9–18, rounds 25–54) — unlocked after clearing Tier 8.
-- Score targets scale from 300 pts (R1) to 25,000 pts (R24) in the base game, and up to 5,400,000 pts (R54) in endless mode.
+- Targets scale from 300 pts (R1) to 25,000 pts (R24). Endless targets scale aggressively, roughly tripling each tier from T11 — reaching ~656M at T18 Boss.
 
-### Reward Screen (after each round)
+### Reward Screen
 
-Choose 2 rewards (3 with The Vault relic):
+Choose 2 rewards (3 with The Vault relic): **Add Card · Remove Cards · Upgrade Card · Gain Relic** (boss rounds only).
 
-- **Add Card** — add 1 card to your deck
-- **Remove Cards** — remove up to 2 cards from your deck
-- **Upgrade Card** — upgrade 1 card by 1 level (max L3)
-- **Gain Relic** — choose 1 relic (boss rounds only, not round 24)
-
-Boss wins also grant +1 reroll charge, usable on any reward screen option.
+Boss wins grant +1 reroll charge. Lucky 3 and The Void can grant additional free relic picks.
 
 ---
 
 ## Relics
 
-Relics are persistent bonuses that last the entire run. One relic is chosen at the start of each run; more are earned through boss rounds.
+One relic is chosen at game start (no legendaries). More are earned through boss rounds and card powers.
 
 ### Common
 
 | Relic | Effect |
 |-------|--------|
 | 💀 Dead Man's Hand | Aces score 200 pts instead of 110. |
-| 🔗 Daisy Chain | Each card after the first in any multi-card hand adds +25 flat bonus. |
+| 🔗 Daisy Chain | +25 flat bonus per card after the first in any multi-card hand. |
 | 💰 Penny Pincher | Each unused free discard at round end upgrades a random L0 card to L1. |
-| ⚡ Swift Hand | Gain +1 extra hand next round for every 3 unused hands this round (max +2). |
+| ⚡ Swift Hand | +1 extra hand next round per 3 unused hands this round (max +2). |
 | 💛 Heart of Gold | Hearts score +20 bonus pts each. |
 | 🕳️ Ace in the Hole | After each successful round, a random Ace is added to your deck. |
-| 🗑️ Trashman | +1 free discard per round. Stackable — each copy adds another +1. |
+| 🗑️ Trashman | +1 free discard per round. Stackable. |
 | 🎒 Full House | Once per round, discard your entire hand and draw 7 fresh cards. |
-| ⚒️ The Anvil | Playing a card that matches the middle card's number scores +150 bonus. |
-| 🧩 Odd Fit | Cards that match by number only (not suit) each score +40 bonus. |
+| ⚒️ The Anvil | Playing a card matching the middle card's number scores +150 bonus. |
+| 🧩 Odd Fit | Cards that match by number only (not suit) score +40 bonus each. |
+| 🔭 Gies a Swatch | Deck preview shows cards in draw order instead of sorted. Top 3 labelled Next/2nd/3rd. |
+| 🃏 Patient Gambler | Playing a single card draws 2 extra cards at the start of your next turn. |
+| 🤖 AI Fingers | Draw back to 8 cards by default instead of 7. |
+| 2️⃣ Evens | Even-numbered cards (2, 4, 6, 8, 10) score 50% more base points. |
+| 1️⃣ Odds | Odd-numbered cards (A, 3, 5, 7, 9) score 50% more base points. Stacks with Dead Man's Hand (Ace = 300 pts). |
+| 🎰 Gambler's Anonymous | 10% chance any hand scores double. Otherwise all hands score 10% less. Preview always shows reduced value. |
+| 🎰 Slot Machine | Holding 3+ 7s at hand start grants max(1,000, 20% of target) bonus pts. Once per round. |
+| ⚡ Power Surge | The first power card played each hand fires its power twice. |
 
 ### Uncommon
 
 | Relic | Effect |
 |-------|--------|
-| 🃏 The Fool | First hand played each round scores ×2. |
-| 🩸 Blood Pact | Queens stack multiplicatively instead of additively (3× L3 Queens = ×64), but each Queen costs 1 extra hand. |
-| 🪬 Ward | Once per round, if you would run out of hands, prevent it and draw 2 cards instead. |
-| 💥 Chain Reaction | Playing multiple 2s together multiplies their draw values instead of adding. e.g. L1+L2+L1 = 2×4×2 = 16 cards drawn. |
+| 🃏 The Fool | First hand each round scores ×2. |
+| 🩸 Blood Pact | Queens stack multiplicatively (3× L3 = ×64), but each costs 1 extra hand. |
+| 🪬 Ward | Once per round, if you run out of hands, prevent it and draw 2 cards instead. |
+| 💥 Chain Reaction | Multiple 2s multiply their draw values. L1+L2+L1 = 2×4×2 = 16 drawn. |
+| 🪞 Mirror Shard | The first card discarded each round doesn't count against free discards. |
 | 🌙 Night Market | See 8 cards instead of 6 for Add, Remove, and Upgrade reward choices. |
 | 🦊 Fox's Gambit | Each Jack played draws 1 extra card. |
-| 🐰 White Rab | Same-number cards in a hand multiply the score: 2 matching = ×2, 3 = ×3, and so on. |
-| ⚙️ On The Gear | On acquisition: 5 random cards in your deck are upgraded by 1 level (max L3). |
-| 🎲 Fuck That | 3 charges. Re-roll any reward screen option. When all 3 are used, relic is destroyed and returns to the pool. |
-| 🎲 Gambler's Chip | After each hand, one random card in your hand is always legal to play. |
-| 🔫 Rapid Shooter | In multi-card hands, 2s, 6s, 8s, and Ks that are not the last card also fire their power. |
+| 🐰 White Rab | Same-number cards multiply the score: 2 matching = ×2, 3 = ×3, etc. |
+| ⚙️ On The Gear | On acquisition: 5 random cards upgraded by 1 level (max L3). |
+| 🎲 Fuck That | 3 charges. Re-roll any reward screen option. Destroyed when spent. |
+| 🎲 Gambler's Chip | After each hand, one random card in hand is always legal to play. |
+| 🔫 Rapid Shooter | In multi-card hands, 2s, 6s, 8s, and Ks not in the last position also fire their power. |
 | ⏰ Late Guy | Hands scored with 3 or fewer hands remaining score double. |
-| 🗺️ Do Where Labs On? | At the start of each round, play the first middle card yourself from your hand. You score no points for it. |
-| 🔄 Cover My Shift? | Consume to re-roll the current boss. Button appears on the boss splash screen. Returns to pool after use. |
+| 🗺️ Do Where Labs On? | At round start, play the first middle card yourself from your hand. No score for it. |
+| 🔄 Cover My Shift? | Consume to re-roll the current boss. Returns to pool after use. |
 
 ### Rare
 
 | Relic | Effect |
 |-------|--------|
-| 🔍 Treasure Hunter | Lucky 3 chance from 3s is doubled (L1: +6%, L2: +12%, L3: +18% per card). |
+| 🔍 Treasure Hunter | Lucky 3 chance from 3s doubled (L1: +6%, L2: +12%, L3: +18% per card). |
 | 🎯 Sniper | Single-card hands score ×6. |
 | 🔥 Wildfire | In a suit dump or chain, every card after the 3rd scores double. |
-| 👑 The Crown | If you clear a round with at least 1 hand remaining, the next round's target is reduced by 15%. |
-| 🌑 Eclipse | Each time your deck reshuffles during a round, score +3,000 bonus points. |
-| 🏦 The Vault | For the next 3 rounds after acquisition, you get 3 reward choices instead of 2. |
-| 📒 Can I See Your Logbook? | Choose one relic you already own — its effect is duplicated. |
-| 🪟 Mirror Image | Immediately duplicates every card in your deck, hand, and discard pile. |
-| 🃏 Cunts got cairds? | Pick UP TO 2 cards from the Add and Upgrade reward screens each time. |
-| 🎨 Colorblind | Spades and clubs are treated as the same suit. Hearts and diamonds are treated as the same suit. |
-| 👑 On Yersel Hen! | Each Queen held in hand (not played) multiplies the final score of the played hand by ×1.5. |
+| 👑 The Crown | Clear a round with ≥1 hand remaining → next round's target −15%. |
+| 🌑 Eclipse | Each deck reshuffle during a round scores +3,000 bonus points. |
+| 🏦 The Vault | Next 3 rounds after acquisition give 3 reward choices instead of 2. |
+| 📒 Can I See Your Logbook? | Duplicate one relic you already own. |
+| 🪟 Mirror Image | Duplicates every card in your deck, hand, and discard pile. |
+| 🃏 Cunts got cairds? | Pick UP TO 2 cards from Add and Upgrade reward screens each time. |
+| 🎨 Colorblind | Spades/clubs treated as same suit. Hearts/diamonds treated as same suit. |
+| 👑 On Yersel Hen! | Each Queen held in hand (not played) multiplies the final hand score by ×1.5. |
 
 ### Legendary
 
 | Relic | Effect |
 |-------|--------|
-| 🪨 Philosopher's Stone | Multi-card hand size bonuses are doubled: ×1.5→×3, ×2→×4, ×3→×6, ×5→×10. |
-| 🐍 Hydra | For every card you discard, draw 2 additional cards from the deck. |
-| 🌌 The Void | Each time your deck reshuffles during a round, gain a free relic choice at the end of that round. |
-| 🌊 Crimson Tide | Every Queen played permanently increases all future Queen multipliers by ×1 (stacks across rounds). |
-| 🔢 Dyscalculia | Every card scores exactly 250 base points, regardless of its number. |
+| 🪨 Philosopher's Stone | Hand size bonuses doubled: ×1.5→×3, ×2→×4, ×3→×6, ×5→×10. |
+| 🐍 Hydra | For every card discarded, draw 2 additional cards from the deck. |
+| 🌌 The Void | Each deck reshuffle during a round grants a free relic choice at round end. |
+| 🌊 Crimson Tide | Every Queen played permanently increases all future Queen multipliers by ×1. |
+| 🔢 Dyscalculia | Every card scores exactly 250 base points. |
 
 ---
 
 ## Bosses
 
-Each boss round modifies the rules for that round. Bosses are shuffled randomly into the 8 boss slots per run; a fresh shuffle is applied for endless mode.
-
 | Boss | Effect | Target |
 |------|--------|--------|
 | ⛓️ The Warden | Max hand size reduced to 12. | 100% |
-| 💸 The Usurer | Paid discards cost 2 hands each instead of 1. | 100% |
-| 🎯 The Marksman | Dealt 26 cards; must beat target in a single hand; 5 free discards. | 90% |
-| 🩸 The Hexer | A random card number is treated as L0 for this round. | 85% |
-| ⏳ The Eroder | Each successive hand scores 10% less (floor 30%). Hand 1=100%, Hand 2=90%… | 65% |
-| 🔒 The Purist | Only suit matching allowed; number matching and same-number stacking disabled. | 65% |
-| ⚗️ The Alchemist | All L0 cards removed from deck for this round. | 140% |
-| ✊ The Anarchist | All Jacks, Queens, and Kings removed from deck for this round. | 70% |
-| 🔵 Performance Anxiety | 1 relic disabled per 6 rounds travelled into the run. Restored after the round. | 85% |
-| ✂️ Halfman | All final hand scores are halved after all other bonuses. | 65% |
+| 💸 The Usurer | Paid discards cost 2 hands each. | 100% |
+| 🎯 The Marksman | Dealt 26 cards; 1 hand; 5 free discards. | 90% |
+| 🩸 The Hexer | A random number treated as L0 for this round. | 85% |
+| ⏳ The Eroder | Each hand scores 10% less (floor 30%). | 65% |
+| 🔒 The Purist | Suit matching only; number matching disabled. | 65% |
+| ⚗️ The Alchemist | All L0 cards removed for this round. | 140% |
+| ✊ The Anarchist | All J/Q/K removed for this round. | 70% |
+| 🔵 Performance Anxiety | 1 relic disabled per 6 rounds into the run. Restored after win. | 85% |
+| ✂️ Halfman | All final hand scores halved. | 65% |
 | 👕 Casual Wear! | All cards playable on any middle card regardless of suit. | 170% |
-| ⚡ Legend Killer | Target score greatly increased. Clearing guarantees a Legendary relic choice. | 175% |
-| 🧈 Butter Fingers | After each hand, 1 random card is discarded from your hand. | 80% |
-| 🟥 Surface-Level Communism | Card levels, tooltips, and suit colours are hidden. Powers still function. | 80% |
-| 🚫 No Mimics | The number(s) played in your last hand cannot be played in the next hand. | 75% |
-| ⚡ Overclock | All hands score ×2, but 20% chance any given hand scores nothing. | 100% |
-| 🗑️ Dr. Wilson | Fixed target (400 pts base / 1,000 pts endless). Every card played is permanently destroyed. | — |
-| 👾 Glitch | At the start of every hand, the middle card's suit is randomised. | 75% |
-| 🪟 Glass Ceiling | Per-hand score capped (500 Tiers 1–4 · 1,000 Tiers 5–6 · scales ×2.5 per 2 tiers from Tier 7). | 50% |
-| 🃏 The Joker | Joker cards added to deck. Each turn one is held: −X pts. Playing one: −3X pts. X = tier × 100. | 85% |
-| 🚿 Leaky Pisser | Each paid discard subtracts 5% of the target score from your current score. Free discards unaffected. | 75% |
-| 🔁 Feedback Loop | After each hand, your remaining hand is shuffled back into the deck and you redraw the same number. | 110% |
+| ⚡ Legend Killer | Target greatly increased. Guarantees a Legendary relic choice. | 175% |
+| 🧈 Butter Fingers | After each hand, 1 random card discarded from your hand. | 80% |
+| 🟥 Surface-Level Communism | Card levels, tooltips, and suit colours hidden. | 80% |
+| 🚫 No Mimics | Last hand's number(s) cannot be played next hand. | 75% |
+| ⚡ Overclock | Hands score ×2, but 20% chance of scoring nothing. | 100% |
+| 🗑️ Dr. Wilson | Fixed target (400 pts / 1,000 endless). Every card played permanently destroyed. | — |
+| 👾 Glitch | Middle card suit randomised at the start of every hand. | 75% |
+| 🪟 Glass Ceiling | Per-hand score capped by tier: 500 (T1–4) · 1,000 (T5–6) · 2,500 (T7–8) · ×2.5 per 2 tiers thereafter. | 50% |
+| 🃏 The Joker | Jokers added to deck. Each turn held: −X pts. Playing one: −3X. X = tier × 100. | 85% |
+| 🚿 Leaky Pisser | Each paid discard subtracts 5% of target from current score. | 75% |
+| 🔁 Feedback Loop | Remaining hand shuffled back into deck after each hand; redraw same count. | 110% |
 
 ---
 
@@ -201,7 +202,7 @@ Each boss round modifies the rules for that round. Bosses are shuffled randomly 
 
 Progress persists across runs via `localStorage`.
 
-- **Relic Memory:** For every 3 bosses beaten in a run, you earn 1 legacy relic pick. After clicking Play Again, you are shown up to 3 of your current relics and choose 1 to carry into the next run. 6 bosses = 2 picks, 9 bosses = 3 picks, and so on.
+- **Relic Memory:** Every 3 bosses beaten earns 1 legacy relic pick. On Play Again, choose relics from your current run to carry forward. 6 bosses = 2 picks, 9 = 3, etc.
 - **Carried relics** are active from the first hand of the new run, before your starting relic pick.
-- **Export / Import:** Save data can be exported as JSON (copied to clipboard) and imported on another device or browser.
-- **Reset:** All legacy progress can be cleared from the title screen.
+- **Export / Import:** Save data as JSON (copied to clipboard). Importable on any browser.
+- **Reset:** All legacy progress clearable from the title screen.
