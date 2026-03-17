@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.32</title>
+<title>Dead Man's Switch v0.8.33</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -988,7 +988,7 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.32</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.33</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
@@ -1049,7 +1049,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.32</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.33</div>
     </div>
   </div>
 
@@ -1750,7 +1750,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.32 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.33 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -3179,6 +3179,7 @@ function initDragDrop() {
     if (idx === lastTapIdx && now - lastTapTime < 350) {
       if (stageableIndices().includes(idx)) stageCard(idx);
       lastTapIdx = -1;
+      lastTapTime = 0; // prevent triple-tap from firing again
     } else {
       lastTapIdx = idx;
       lastTapTime = now;
@@ -3187,11 +3188,18 @@ function initDragDrop() {
 }
 
 // Double-click to stage (desktop)
+// Guard: ignore rapid repeat dblclicks within 300ms to prevent double-staging
+// when the DOM re-renders between the two click events that compose a dblclick.
+let _dblclickGuard = false;
 document.addEventListener('dblclick', e => {
+  if (_dblclickGuard) return;
   const card = e.target.closest('.card[draggable="true"]');
   if (!card || !card.dataset.handIdx) return;
   const idx = parseInt(card.dataset.handIdx);
-  if (!isNaN(idx) && stageableIndices().includes(idx)) stageCard(idx);
+  if (isNaN(idx) || !stageableIndices().includes(idx)) return;
+  _dblclickGuard = true;
+  setTimeout(() => { _dblclickGuard = false; }, 300);
+  stageCard(idx);
 });
 
 // G.staged stores hand indices (numbers), not card objects.
