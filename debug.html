@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch v0.8.20</title>
+<title>Dead Man's Switch v0.8.32</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -988,12 +988,13 @@ body {
 <div id="title-screen" class="screen active">
   <div class="title-suits">♠ ♥ ♦ ♣</div>
   <div class="title-logo"><span class="title-logo-eyebrow">Dead Man's</span><span class="title-logo-main">SWITCH</span></div>
-  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.20</div>
+  <div style="font-size:10px;letter-spacing:2px;color:var(--dim);margin-top:-8px;margin-bottom:4px;">v0.8.32</div>
   <div class="title-sub">A survival roguelike built on Switch card rules.<br>Match suit or number. Build your hand. Dump your suit.</div>
   <button class="btn primary" onclick="startGame()" style="font-size:14px;padding:12px 32px;margin-top:8px;">BEGIN RUN</button>
   <div style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-top:4px;">
     One card per hand · 7 dumps your suit · Same numbers stack
   </div>
+  <div id="title-legacy" style="margin-top:16px;text-align:center;max-width:400px;"></div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ RELIC -->
@@ -1048,7 +1049,7 @@ body {
       <div class="hud-val" id="hud-discs">3 free</div>
     </div>
     <div class="hud-cell" style="justify-content:flex-end;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.20</div>
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;">v0.8.32</div>
     </div>
   </div>
 
@@ -1188,19 +1189,32 @@ const ROUND_TARGETS = [0,  300,  420,  560,  800,  1000, 1250, 1550, 2000,
 //                    17     18⚡    19     20     21⚡    22     23     24⚡
                        9500, 11000, 12500, 14500, 17000, 19500, 22000, 25000,
 // ── ENDLESS MODE (Tiers 9-18, rounds 25-54) ──────────────────────────────────
-//                    25⚡T9  26     27⚡    28T10  29     30⚡
+//                    25T9R1  26     27T9⚡  28T10   29      30T10⚡
                        28000, 32000, 37000, 42000, 49000, 57000,
-//                    31T11  32     33⚡    34T12  35     36⚡
-                       65000, 84000, 105000, 115000, 150000, 190000,
-//                    37T13  38     39⚡     40T14   41      42⚡
-                       200000, 260000, 330000, 350000, 455000, 575000,
-//                    43T15   44      45⚡       46T16    47       48⚡
-                       610000, 795000, 1000000, 1050000, 1400000, 1750000,
-//                    49T17    50       51⚡      52T18    53       54⚡
-                       1850000, 2450000, 3100000, 3250000, 4250000, 5400000];
+//                    31T11   32      33T11⚡  34T12    35       36T12⚡
+                       180000, 234000, 300000, 540000, 702000, 900000,
+//                    37T13     38        39T13⚡    40T14      41         42T14⚡
+                       1620000, 2106000, 2700000, 4860000, 6318000, 8100000,
+//                    43T15       44          45T15⚡      46T16        47           48T16⚡
+                       14580000, 18954000, 24300000, 43740000, 56862000, 72900000,
+//                    49T17         50           51T17⚡       52T18          53            54T18⚡
+                       131220000, 170586000, 218700000, 393660000, 511758000, 656100000];
 
 const ROUND_MAXHANDS = new Array(55).fill(10);  // Set Max Hands to 10 for all rounds (can be overwritten by boss)
 const ROUND_MAXDISCS = new Array(55).fill(5);  // Set Max Discards to 5 for all rounds (can be overwritten by boss)
+
+// ── Score formatting ─────────────────────────────────────────────────────────
+// For values >= 1,000,000,000 display as scientific notation: 1.234e9
+// For smaller values display plain integer.
+function fmtScore(n) {
+  n = Math.round(n);
+  if (n >= 1_000_000_000) {
+    const exp = Math.floor(Math.log10(n));
+    const mantissa = n / Math.pow(10, exp);
+    return mantissa.toFixed(3) + 'e' + exp;
+  }
+  return n.toLocaleString();
+}
 
 // ── DISABLED RELICS ─────────────────────────────────────────────────────────
 // Comment out any line below to re-enable that relic in all reward pools.
@@ -1271,6 +1285,14 @@ const ALL_RELICS = [
   { key:'canteen',        tier:'common',   art:'🎒', name:'Full House',              desc:'Once per round, discard your entire hand and draw 7 fresh cards.' },
   { key:'the_anvil',      tier:'common',   art:'⚒️', name:'The Anvil',               desc:'Playing a card that matches the middle card\'s number scores +150 bonus.' },
   { key:'odd_fit',        tier:'common',   art:'🧩', name:'Odd Fit',                 desc:'Cards that match by number only (not by suit) each score +40 bonus.' },
+  { key:'gies_a_swatch',  tier:'common',   art:'🔭', name:'Gies a Swatch',            desc:'The deck preview now shows cards in draw order (top = next drawn) instead of sorted.' },
+  { key:'patient_gambler',tier:'common',   art:'🃏', name:'Patient Gambler',           desc:'Playing a single card draws 2 extra cards at the start of your next turn.' },
+  { key:'ai_fingers',     tier:'common',   art:'🤖', name:'AI Fingers',                desc:'Draw back to 8 cards by default instead of 7.' },
+  { key:'evens',          tier:'common',   art:'2️⃣', name:'Evens',                     desc:'Even-numbered cards (2, 4, 6, 8, 10) score 50% more base points.' },
+  { key:'odds',           tier:'common',   art:'1️⃣', name:'Odds',                      desc:"Odd-numbered cards (A, 3, 5, 7, 9) score 50% more base points. Stacks with Dead Man's Hand (Ace scores 300 pts)." },
+  { key:'gamblers_anon',  tier:'common',   art:'🎰', name:"Gambler's Anonymous",       desc:'10% chance any hand scores double. Otherwise all hands score 10% less. Preview always shows the 10%-reduced value.' },
+  { key:'slot_machine',   tier:'common',   art:'🎰', name:'Slot Machine',              desc:'If you have 3 or more 7s in hand at the start of a hand, score bonus points (max of 1,000 or 20% of target). Triggers once per round.' },
+  { key:'power_surge',    tier:'common',   art:'⚡', name:'Power Surge',               desc:'The first power card you play each hand fires its power twice (stackable powers count doubled).' },
 
   // ── UNCOMMON ─────────────────────────────────────────────────
   { key:'the_fool',       tier:'uncommon', art:'🃏', name:'The Fool',                desc:'Your first hand played each round scores ×2.' },
@@ -1313,9 +1335,103 @@ const ALL_RELICS = [
 
 // ══════════════════════════════════════════════════════════════ GAME STATE
 let G = {};
-// Legacy relic memory — persists across runs within the same page session
+// ── LEGACY PERSISTENCE ────────────────────────────────────────────────────
+const LEGACY_KEY = 'dms_legacy_v1';
+
 let _legacyRelics = [];       // relics carried into the next run
 let _pendingLegacyPicks = 0;  // how many more legacy picks remain before startGame
+let _totalBossesCleared = 0;  // lifetime boss clears across all runs (drives pick count)
+
+function loadLegacyState() {
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.legacyRelics)) _legacyRelics = data.legacyRelics;
+    if (typeof data.totalBossesCleared === 'number') _totalBossesCleared = data.totalBossesCleared;
+  } catch(e) { console.warn('DMS: failed to load legacy state', e); }
+}
+
+function saveLegacyState() {
+  try {
+    localStorage.setItem(LEGACY_KEY, JSON.stringify({
+      legacyRelics: _legacyRelics,
+      totalBossesCleared: _totalBossesCleared,
+    }));
+  } catch(e) { console.warn('DMS: failed to save legacy state', e); }
+}
+
+function exportLegacy() {
+  const data = { legacyRelics: _legacyRelics, totalBossesCleared: _totalBossesCleared };
+  const json = JSON.stringify(data, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    const btn = document.getElementById('export-legacy-btn');
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Export Save', 1600); }
+  }).catch(() => {
+    // Fallback: show in a prompt
+    prompt('Copy your save data:', json);
+  });
+}
+
+function importLegacy() {
+  const input = prompt('Paste your save data:');
+  if (!input) return;
+  try {
+    const data = JSON.parse(input.trim());
+    if (!Array.isArray(data.legacyRelics)) throw new Error('Invalid format');
+    // Validate relic keys
+    const validKeys = new Set(ALL_RELICS.map(r => r.key));
+    data.legacyRelics = data.legacyRelics.filter(k => validKeys.has(k));
+    _legacyRelics = data.legacyRelics;
+    _totalBossesCleared = typeof data.totalBossesCleared === 'number' ? data.totalBossesCleared : 0;
+    saveLegacyState();
+    renderTitleLegacy();
+    alert(`Save imported! ${_legacyRelics.length} relic${_legacyRelics.length !== 1 ? 's' : ''} carried, ${_totalBossesCleared} bosses cleared.`);
+  } catch(e) {
+    alert('Invalid save data. Please check and try again.');
+  }
+}
+
+function resetLegacy() {
+  if (!confirm('Reset all legacy progress? This cannot be undone.')) return;
+  _legacyRelics = [];
+  _totalBossesCleared = 0;
+  _pendingLegacyPicks = 0;
+  saveLegacyState();
+  renderTitleLegacy();
+}
+
+function renderTitleLegacy() {
+  const el = document.getElementById('title-legacy');
+  if (!el) return;
+  const relicNames = _legacyRelics.map(k => {
+    const r = ALL_RELICS.find(x => x.key === k);
+    return r ? `${r.art} ${r.name}` : k;
+  });
+  const picksEarned = Math.floor(_totalBossesCleared / 3);
+  const picksUsed = _legacyRelics.length;
+
+  el.innerHTML = _legacyRelics.length > 0 || _totalBossesCleared > 0 ? `
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;">✦ Legacy Progress</div>
+    ${_totalBossesCleared > 0 ? `<div style="font-size:11px;color:var(--dim);margin-bottom:4px;">${_totalBossesCleared} boss${_totalBossesCleared !== 1 ? 'es' : ''} cleared · ${picksUsed}/${picksEarned} relic${picksEarned !== 1 ? 's' : ''} carried</div>` : ''}
+    ${relicNames.length > 0 ? `<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">${relicNames.join(' · ')}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn" id="export-legacy-btn" onclick="exportLegacy()" style="font-size:11px;padding:6px 14px;">📋 Export Save</button>
+      <button class="btn" onclick="importLegacy()" style="font-size:11px;padding:6px 14px;">📥 Import Save</button>
+      <button class="btn" onclick="resetLegacy()" style="font-size:11px;padding:6px 14px;color:var(--red);border-color:var(--red);">✕ Reset</button>
+    </div>
+  ` : `
+    <div style="font-size:11px;color:var(--dim);margin-bottom:8px;">No legacy progress yet. Beat bosses to earn relic memory.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+      <button class="btn" onclick="importLegacy()" style="font-size:11px;padding:6px 14px;">📥 Import Save</button>
+    </div>
+  `;
+}
+
+// Load on page init
+loadLegacyState();
+// Render legacy section once DOM is ready
+document.addEventListener('DOMContentLoaded', renderTitleLegacy);
 
 function makeDeck() {
   const d = [];
@@ -1467,13 +1583,22 @@ function drawUp(n) {
   } else {
     // Top-up to 7, hard capped at handCap()
     tryReshuffle();
-    const softCap = Math.min(7, handCap());
+    const softCap = Math.min((G.relics && G.relics.includes('ai_fingers')) ? 8 : 7, handCap());
     const limit = Math.max(0, softCap - G.hand.length);
     let drawn = 0;
     const deckBefore = G.deck.length;
     while (drawn < limit && G.deck.length > 0) {
       G.hand.push(G.deck.pop());
       drawn++;
+    }
+    // Patient Gambler: draw 2 extra next top-up after single-card play
+    if (G._patientGamblerPending && G.relics && G.relics.includes('patient_gambler')) {
+      G._patientGamblerPending = false;
+      let extra = 0;
+      while (extra < 2 && G.deck.length > 0 && G.hand.length < handCap()) {
+        G.hand.push(G.deck.pop()); extra++;
+      }
+      if (extra > 0) log(`🃏 Patient Gambler! Drew ${extra} extra card${extra>1?'s':''}.`, 'gold');
     }
     // Gambler's Chip: after every top-up, assign a new forced-legal card
     if (G.relics && G.relics.includes('gamblers_chip') && G.hand.length > 0) {
@@ -1519,6 +1644,25 @@ function processJokersInHand() {
     j._jokerDrawn = true;
     log(`🃏 Joker drawn! It will drain your score at the start of each turn.`, 'red');
   }
+}
+
+// Slot Machine: if 3+ 7s in hand at hand start, award bonus. Once per round.
+function checkSlotMachine() {
+  if (!G.relics || !G.relics.includes('slot_machine')) return;
+  if (G._slotMachineUsed) return;
+  const sevensInHand = G.hand.filter(c => c.n === '7').length;
+  if (sevensInHand < 3) return;
+  G._slotMachineUsed = true;
+  const bonus = Math.max(1000, Math.floor(target() * 0.2));
+  G.score += bonus;
+  log(`🎰 Slot Machine! Three 7s in hand — +${fmtScore(bonus)} pts!`, 'gold');
+  if (typeof _scoreTween !== 'undefined' && _scoreTween) cancelAnimationFrame(_scoreTween);
+  _displayScore = G.score;
+  updateHUD();
+  updateHUDScoreOnly();
+  showHandSizeBanner(0, 0, '🎰 SLOT MACHINE!', '#ffdd44');
+  setTimeout(() => { const sub = document.getElementById('combo-sub'); if (sub) sub.textContent = `+${fmtScore(bonus)} PTS`; }, 10);
+  pulseRelic('slot_machine');
 }
 
 // Called at the start of each hand turn — ticks held Jokers for X each.
@@ -1606,7 +1750,7 @@ function log(msg, cls='') {
 
 function copyGameLog() {
   const header = [
-    `DEAD MAN'S SWITCH v0.8.20 — Game Log`,
+    `DEAD MAN'S SWITCH v0.8.32 — Game Log`,
     `Relics: ${G.relics.length ? G.relics.join(', ') : 'none'}`,
     `${roundLabel()}  Score: ${G.score}`,
     `────────────────────────────`,
@@ -1635,7 +1779,7 @@ function copyGameLog() {
 }
 
 function updateHUD() {
-  document.getElementById('hud-score').textContent = G.score;
+  document.getElementById('hud-score').textContent = fmtScore(G.score);
   document.getElementById('hud-hands').textContent = handsLeft();
   const free = freeDiscsLeft();
   const discEl = document.getElementById('hud-discs');
@@ -1646,7 +1790,7 @@ function updateHUD() {
   }
   const pct = target() > 0 ? Math.min(100, G.score / target() * 100) : 0;
   document.getElementById('score-bar').style.width = pct + '%';
-  document.getElementById('target-display').textContent = target();
+  document.getElementById('target-display').textContent = fmtScore(target());
   document.getElementById('round-title').textContent = roundLabel();
   document.getElementById('hand-count').textContent = G.hand.length;
 
@@ -1864,7 +2008,7 @@ function renderActions() {
   const canPlay = staged.length > 0;
   const previewScore = calcPreviewScore(staged);
   const previewText = canPlay
-    ? (previewScore < 0 ? ` (${previewScore} pts ⚠️)` : ` (+${previewScore} pts)`)
+    ? (previewScore < 0 ? ` (${fmtScore(previewScore)} pts ⚠️)` : ` (+${fmtScore(previewScore)} pts)`)
     : '';
   html += `<button class="play-hand-btn" onclick="commitStagedHand()" ${canPlay?'':'disabled'}>
     ▶ Play Hand${previewText}
@@ -1915,12 +2059,22 @@ function toggleDeckViewer() {
   if (!panel) return;
   const open = panel.style.display !== 'none';
   if (open) { panel.style.display = 'none'; return; }
-  const sorted = [...G.deck].sort((a,b) => {
-    const SO={'♠':0,'♥':1,'♦':2,'♣':3}, NO={'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'10':9,'J':10,'Q':11,'K':12};
-    return SO[a.s]-SO[b.s] || NO[a.n]-NO[b.n];
-  });
-  document.getElementById('dvp-count').textContent = sorted.length;
-  document.getElementById('dvp-cards').innerHTML = sorted.map(c => cardHTML(c,'','',true)).join('');
+  let displayDeck;
+  if (G.relics && G.relics.includes('gies_a_swatch')) {
+    // Show in draw order: deck[last] = next drawn = shown first
+    displayDeck = [...G.deck].reverse();
+  } else {
+    displayDeck = [...G.deck].sort((a,b) => {
+      const SO={'♠':0,'♥':1,'♦':2,'♣':3}, NO={'A':0,'2':1,'3':2,'4':3,'5':4,'6':5,'7':6,'8':7,'9':8,'10':9,'J':10,'Q':11,'K':12};
+      return SO[a.s]-SO[b.s] || NO[a.n]-NO[b.n];
+    });
+  }
+  document.getElementById('dvp-count').textContent = displayDeck.length;
+  document.getElementById('dvp-cards').innerHTML = displayDeck.map((c,i) => {
+    const label = (G.relics && G.relics.includes('gies_a_swatch') && i < 3)
+      ? `<div style="font-size:9px;color:var(--gold);text-align:center;margin-top:2px;">${['Next','2nd','3rd'][i]}</div>` : '';
+    return `<div>${cardHTML(c,'','',true)}${label}</div>`;
+  }).join('');
   panel.style.display = 'block';
 }
 
@@ -1940,6 +2094,21 @@ function calcPreviewScore(cards) {
   // Dyscalculia: every card scores exactly 250 base points
   if (G.relics.includes('dyscalculia')) {
     raw = cards.length * 250;
+  }
+
+  // Evens: even-numbered cards score 50% more
+  if (G.relics.includes('evens') && !G.relics.includes('dyscalculia')) {
+    const EVENS = new Set(['2','4','6','8','10']);
+    raw += cards.filter(c => EVENS.has(c.n)).reduce((s, c) => s + Math.floor((BASE_SCORES[c.n] || 0) * 0.5), 0);
+  }
+
+  // Odds: odd-numbered cards score 50% more
+  if (G.relics.includes('odds') && !G.relics.includes('dyscalculia')) {
+    const ODDS = new Set(['A','3','5','7','9']);
+    raw += cards.filter(c => ODDS.has(c.n)).reduce((s, c) => {
+      const base = (c.n === 'A' && G.relics.includes('dead_mans_hand')) ? 200 : (BASE_SCORES[c.n] || 0);
+      return s + Math.floor(base * 0.5);
+    }, 0);
   }
 
   // Philosopher's Stone: handled in multiplier section below (doubles hand-size mult)
@@ -2072,6 +2241,11 @@ function calcPreviewScore(cards) {
     raw = raw * 2;
   }
 
+  // Gambler's Anonymous: preview always shows ×0.9 (pessimistic — player knows the risk)
+  if (G.relics.includes('gamblers_anon')) {
+    raw = Math.round(raw * 0.9);
+  }
+
   // Joker: playing a Joker costs 3X — subtract from preview (can go negative to show net loss)
   const jokerCount = cards.filter(c => c.isJoker).length;
   if (jokerCount > 0) {
@@ -2154,6 +2328,9 @@ function startGame() {
     _voidOptions: null,     // pending void relic choices
     _fuckThatCharges: 0,
     _rerollCharges: 0,
+    _patientGamblerPending: false, // Patient Gambler: draw 2 extra next top-up
+    _slotMachineUsed: false,       // Slot Machine: once per round
+    _powerSurgePending: false,     // Power Surge: first power card fires twice
     fullLog: [],
   };
   assignBossRounds();
@@ -2164,18 +2341,14 @@ function startGame() {
 
 // Called when player clicks Play Again. If bosses were cleared, offer legacy picks first.
 function tryLegacyPick() {
-  const cleared = (G && G._bossesCleared) || 0;
-  const picksEarned = Math.floor(cleared / 3);
-  const alreadyPicked = _legacyRelics.length; // picks already made this session
+  const picksEarned = Math.floor(_totalBossesCleared / 3);
+  const alreadyPicked = _legacyRelics.length;
   const remaining = picksEarned - alreadyPicked;
 
   if (remaining > 0 && G.relics && G.relics.length > 0) {
     _pendingLegacyPicks = remaining;
     showLegacyRelicScreen();
   } else {
-    // No picks available or no relics to choose from — reset legacy and start fresh
-    _legacyRelics = [];
-    _pendingLegacyPicks = 0;
     startGame();
   }
 }
@@ -2201,13 +2374,9 @@ function showLegacyRelicScreen() {
   const el = document.getElementById('legacy-relic-options');
 
   if (offered.length === 0) {
-    // No relics to offer — skip
-    el.innerHTML = '<div style="color:var(--dim);text-align:center;padding:24px;">No relics available to carry over.</div>';
-    setTimeout(() => {
-      _pendingLegacyPicks = 0;
-      _legacyRelics = [];
-      startGame();
-    }, 1500);
+    // No relics to offer — skip remaining picks
+    el.innerHTML = '<div style="color:var(--dim);text-align:center;padding:24px;">No more relics available to carry over.</div>';
+    setTimeout(() => { _pendingLegacyPicks = 0; startGame(); }, 1500);
     return;
   }
 
@@ -2228,11 +2397,12 @@ function showLegacyRelicScreen() {
 function pickLegacyRelic(key) {
   if (!_legacyRelics.includes(key)) _legacyRelics.push(key);
   _pendingLegacyPicks--;
+  saveLegacyState();
 
   if (_pendingLegacyPicks > 0) {
-    showLegacyRelicScreen(); // show next pick
+    showLegacyRelicScreen();
   } else {
-    startGame(); // all picks done — start the run
+    startGame();
   }
 }
 
@@ -2608,6 +2778,10 @@ function applyBossEffects() {
     document.body.classList.add('boss-communism');
     log(`🟥 Surface-Level Communism! Card levels and colours hidden.`, 'red');
   }
+  if (boss.key === 'glass_ceiling') {
+    const cap = fmtScore(getGlassCeilingCap());
+    G.activeBoss.rule = `Each hand score is capped at ${cap} pts this round.`;
+  }
   if (boss.key === 'the_joker') {
     const jokerCount = Math.max(1, Math.floor((G.deck.length + G.hand.length) / 26));
     G._jokerCards = Array.from({length: jokerCount}, () => ({ n: '★', s: '☆', level: 0, isJoker: true }));
@@ -2750,6 +2924,9 @@ function startRound() {
   G.gamblerCardKey = null;
   G._noMimicsNumbers = new Set();
   G._jokerCards = [];
+  G._slotMachineUsed = false;
+  G._powerSurgePending = false;
+  G._patientGamblerPending = false;
   G._rewardChoicesDone = 0;
   G._rewardUsedActions = new Set();
   G.activeBoss = null;
@@ -2861,6 +3038,10 @@ function finishStartRound() {
   }
   // Joker tick: penalise held Jokers at the start of each hand
   tickJokersPerTurn();
+  // Slot Machine: check for 3+ 7s at hand start
+  checkSlotMachine();
+  // Power Surge: arm the first-power-fires-twice flag
+  if (G.relics && G.relics.includes('power_surge')) G._powerSurgePending = true;
   log(`─── ${roundLabel()} · Target: ${target()} pts ───`, 'gold');
   if (!G.relics.includes('do_where_labs_on')) {
     log(`Opening middle: ${G.middle.n}${G.middle.s}`, 'dim');
@@ -3339,7 +3520,7 @@ function commitStagedHand() {
     function onLand(i) {
       const pts = perCardScores[i];
       const pos = popNearScoreBar();
-      spawnScorePop(`+${pts}`, pos.x + (Math.random()-0.5)*40, pos.y - i*8, pts >= 150 ? 'mult' : '');
+      spawnScorePop(`+${fmtScore(pts)}`, pos.x + (Math.random()-0.5)*40, pos.y - i*8, pts >= 150 ? 'mult' : '');
       runningScore += pts;
       animateScore(runningScore - pts, runningScore, 180, () => renderMilestones());
     }
@@ -3392,12 +3573,20 @@ function postHandSettle(_di, suppressBossHooks) {
   if (!suppressBossHooks && G.activeBoss && G.activeBoss.key === 'butter_fingers' && G.hand.length < 7) {
     drawUp(); // draw one more if needed (drawUp tops up to 7)
   }
-  // ── Joker tick: penalise any Jokers still held at start of next hand ────────
-  if (!suppressBossHooks) tickJokersPerTurn();
+  // ── Joker tick + Slot Machine + Power Surge ─────────────────────────────────
+  if (!suppressBossHooks) {
+    tickJokersPerTurn();
+    checkSlotMachine();
+    if (G.relics && G.relics.includes('power_surge')) G._powerSurgePending = true;
+  }
   updateHUD(); renderActions(); animateDealIn(_di); checkRoundEnd();
 }
 
 function _executeCommit(staged) {
+  // Patient Gambler: set bonus draw flag for single non-Jack card plays
+  if (staged.length === 1 && staged[0].n !== 'J' && G.relics && G.relics.includes('patient_gambler')) {
+    G._patientGamblerPending = true;
+  }
   G.staged = [];
   G._stagedMode = null;
   G._jackBonusSlots = 0;
@@ -4076,6 +4265,23 @@ function applyScore(cards, overrideTotal, opts = {}) {
     pulseRelic('dyscalculia');
   }
 
+  // ── Relic: Evens — even-numbered cards score 50% more
+  if (G.relics.includes('evens') && !G.relics.includes('dyscalculia')) {
+    const EVENS = new Set(['2','4','6','8','10']);
+    const evenBonus = cards.filter(c => EVENS.has(c.n)).reduce((s, c) => s + Math.floor((BASE_SCORES[c.n] || 0) * 0.5), 0);
+    if (evenBonus > 0) { raw += evenBonus; log(`2️⃣ Evens! +${evenBonus} bonus`, 'gold'); pulseRelic('evens'); }
+  }
+
+  // ── Relic: Odds — odd-numbered cards score 50% more
+  if (G.relics.includes('odds') && !G.relics.includes('dyscalculia')) {
+    const ODDS = new Set(['A','3','5','7','9']);
+    const oddBonus = cards.filter(c => ODDS.has(c.n)).reduce((s, c) => {
+      const base = (c.n === 'A' && G.relics.includes('dead_mans_hand')) ? 200 : (BASE_SCORES[c.n] || 0);
+      return s + Math.floor(base * 0.5);
+    }, 0);
+    if (oddBonus > 0) { raw += oddBonus; log(`1️⃣ Odds! +${oddBonus} bonus`, 'gold'); pulseRelic('odds'); }
+  }
+
   // ── Relic: Philosopher's Stone — doubles hand-size mult (handled below in mult section)
 
   // ── Per-card number bonuses from relics
@@ -4265,6 +4471,20 @@ function applyScore(cards, overrideTotal, opts = {}) {
     showHandSizeBanner(0, 3, 'FULL HAND!', '#ff4');
   }
 
+  // ── Relic: Gambler's Anonymous — 10% chance ×2, otherwise ×0.9
+  if (G.relics.includes('gamblers_anon') && !opts.suppressSniper) {
+    if (Math.random() < 0.1) {
+      final = final * 2;
+      log(`🎰 Gambler's Anonymous! Lucky! Hand scored ×2 → +${fmtScore(final)} pts`, 'gold');
+      showHandSizeBanner(0, 0, "GAMBLER'S LUCK!", '#ffdd44');
+      setTimeout(() => { const sub = document.getElementById('combo-sub'); if (sub) sub.textContent = 'HAND SCORES ×2!'; }, 10);
+      pulseRelic('gamblers_anon');
+    } else {
+      final = Math.round(final * 0.9);
+      log(`🎰 Gambler's Anonymous! No luck — hand ×0.9 → +${fmtScore(final)} pts`, 'dim');
+    }
+  }
+
   // ── Boss: Halfman — halve all final scores
   if (G.activeBoss && G.activeBoss.key === 'halfman' && !opts.suppressSniper) {
     final = Math.floor(final / 2);
@@ -4317,11 +4537,11 @@ function applyScore(cards, overrideTotal, opts = {}) {
   if (!G._suppressScorePop) {
     const pos = popNearScoreBar();
     if (mult > 1) {
-      spawnScorePop(`+${raw}`, pos.x - 30, pos.y, '');
+      spawnScorePop(`+${fmtScore(raw)}`, pos.x - 30, pos.y, '');
       setTimeout(() => spawnScorePop(`x${mult}`, pos.x + 20, pos.y - 10, 'mult'), 220);
-      setTimeout(() => spawnScorePop(`=${final}`, pos.x, pos.y - 30, 'mult'), 440);
+      setTimeout(() => spawnScorePop(`=${fmtScore(final)}`, pos.x, pos.y - 30, 'mult'), 440);
     } else {
-      spawnScorePop(`+${final}`, pos.x, pos.y, final >= 200 ? 'mult' : '');
+      spawnScorePop(`+${fmtScore(final)}`, pos.x, pos.y, final >= 200 ? 'mult' : '');
     }
   }
   G._suppressScorePop = false;
@@ -4349,6 +4569,16 @@ function firePower(card, twosCount, cont) {
   const lv = effectiveLevel(card);
   const done = cont || (() => {});
   if (lv < 1) { done(); return; } // L0 cards have no power
+
+  // Power Surge: first power card each hand fires twice
+  let _surgeMult = 1;
+  if (G._powerSurgePending && G.relics && G.relics.includes('power_surge')) {
+    G._powerSurgePending = false;
+    _surgeMult = 2;
+    log(`⚡ Power Surge! ${n} fires twice!`, 'gold');
+    pulseRelic('power_surge');
+  }
+
   doPowerFlash(card);
 
   // ── ACE ──────────────────────────────────────────────────────
@@ -4372,8 +4602,8 @@ function firePower(card, twosCount, cont) {
       log(`💥 Chain Reaction! ${factors.map((f,i)=>`×${f}`).join(' × ')} = draw ${amount} cards!`, 'gold');
       pulseRelic('chain_reaction');
     } else {
-      amount = perCard;
-      log(`2 L${lv}! Draw ${amount} cards...`, 'blue');
+      amount = perCard * _surgeMult;
+      log(`2 L${lv}! Draw ${amount} cards${_surgeMult>1?' (Power Surge)':''}...`, 'blue');
     }
     const drawn = drawUp(amount);
     log(`Drew ${drawn}. Hand: ${G.hand.length}`, 'dim');
@@ -4429,11 +4659,11 @@ function firePower(card, twosCount, cont) {
   // ── 6 (Mend) ─────────────────────────────────────────────────
   } else if (n === '6') {
     if (lv >= 3) {
-      // L3: grant +2 extra discards beyond cap (by reducing discUsed below 0, effectively adding capacity)
-      G.discUsed = Math.max(-2, G.discUsed - 2);
-      log(`6 L3! +2 extra discards (free discards: ${freeDiscsLeft()})`, 'blue');
+      const extraDiscs = 2 * _surgeMult;
+      G.discUsed = Math.max(-extraDiscs, G.discUsed - extraDiscs);
+      log(`6 L3! +${extraDiscs} extra discards (free discards: ${freeDiscsLeft()})`, 'blue');
     } else {
-      const recover = lv === 1 ? 1 : 2;
+      const recover = (lv === 1 ? 1 : 2) * _surgeMult;
       const actual = Math.min(recover, G.discUsed);
       G.discUsed = Math.max(0, G.discUsed - actual);
       log(`6 Mend L${lv}! Recovered ${actual} discard${actual!==1?'s':''}. Free discards: ${freeDiscsLeft()}`, 'blue');
@@ -4452,7 +4682,7 @@ function firePower(card, twosCount, cont) {
 
   // ── 8 ────────────────────────────────────────────────────────
   } else if (n === '8') {
-    const extraHands = lv === 3 ? 3 : (lv === 2 ? 2 : 1);
+    const extraHands = (lv === 3 ? 3 : (lv === 2 ? 2 : 1)) * _surgeMult;
     G.handsUsed -= extraHands;
     // if (lv >= 3) {
     //   const drawn = drawUp(1);
@@ -4481,12 +4711,12 @@ function firePower(card, twosCount, cont) {
   } else if (n === 'J') {
     // Fox's Gambit relic: Jack draws 1 extra
     if (G.relics.includes('foxs_gambit')) {
-        const drawn = drawUp(1);
+        const drawn = drawUp(_surgeMult);
         log(`🦊 Fox's Gambit! Jack drew ${drawn}. Hand: ${G.hand.length}`, 'gold');
         pulseRelic('foxs_gambit');
       }
     if (lv >= 2) {
-      const drawn = drawUp(1); // L2 and L3 both draw 1
+      const drawn = drawUp(_surgeMult); // L2 and L3 both draw 1 (×_surgeMult with Power Surge)
       log(`Jack L${lv}! Drew ${drawn}. Hand: ${G.hand.length}`, 'blue');
     }
     updateHUD(); renderActions();
@@ -4494,7 +4724,7 @@ function firePower(card, twosCount, cont) {
 
   // ── QUEEN (multiplier for next hand) ─────────────────────────
   } else if (n === 'Q') {
-    const baseMult = 2 + G.crimsonBonus + (lv - 1); // L1=2, L2=3, L3=4 (+ crimson stacks)
+    const baseMult = (2 + G.crimsonBonus + (lv - 1)) * _surgeMult; // L1=2, L2=3, L3=4 (+ crimson stacks, ×2 with Power Surge)
     G.queenMultTurns = Math.max(G.queenMultTurns, 1);
     if (G.relics.includes('crimson_tide')) {
       G.crimsonBonus++;
@@ -4517,14 +4747,14 @@ function firePower(card, twosCount, cont) {
 
   // ── KING (draw 5/7/9) ─────────────────────────────────────────
   } else if (n === 'K') {
-    const drawCount = lv === 1 ? 5 : lv === 2 ? 6 : 7;
+    const drawCount = (lv === 1 ? 5 : lv === 2 ? 6 : 7) * _surgeMult;
     const drawn = drawUp(drawCount);
     log(`King L${lv}! Drew ${drawn}. Hand: ${G.hand.length}.`, 'blue');
     done();
 
   // ── 10 (Surge) ───────────────────────────────────────────────
   } else if (n === '10') {
-    const bonus = lv === 1 ? 100 : lv === 2 ? 200 : 300;
+    const bonus = (lv === 1 ? 100 : lv === 2 ? 200 : 300) * _surgeMult;
     G.surgeBonus = (G.surgeBonus || 0) + bonus;
     log(`10 Surge L${lv}! +${bonus} pts added to next hand scored.`, 'blue');
     done();
@@ -5404,7 +5634,9 @@ function enterEndlessMode() {
   if (isBossRound(G.roundNum)) {
     G._rerollCharges += 1;
     G._bossesCleared = (G._bossesCleared || 0) + 1;
-    log(`🏆 Boss cleared! +1 reroll granted (${G._rerollCharges} total). Bosses cleared: ${G._bossesCleared}.`, 'gold');
+    _totalBossesCleared++;
+    saveLegacyState();
+    log(`🏆 Boss cleared! +1 reroll granted (${G._rerollCharges} total). Total bosses cleared: ${_totalBossesCleared}.`, 'gold');
   }
   if (G.relics.includes('ace_in_hole')) {
     const suits = ['♠','♥','♦','♣'];
@@ -5417,7 +5649,7 @@ function enterEndlessMode() {
   document.getElementById('reward-title').textContent = `${roundLabel()} Cleared!`;
   const rerollInfo = G._rerollCharges > 0 ? ` · 🎲 ${G._rerollCharges} reroll${G._rerollCharges !== 1 ? 's' : ''}` : '';
   const vaultInfo = (G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? ` · 🏦 ${G._vaultRoundsLeft} vault round${G._vaultRoundsLeft !== 1 ? 's' : ''} left` : '';
-  document.getElementById('reward-subtitle').textContent = `${G.score} pts · Choose ${(G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? 3 : 2} rewards for ${nextRoundLabel()}${rerollInfo}${vaultInfo}`;
+  document.getElementById('reward-subtitle').textContent = `${fmtScore(G.score)} pts · Choose ${(G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? 3 : 2} rewards for ${nextRoundLabel()}${rerollInfo}${vaultInfo}`;
   renderRewardTokens();
   renderRewardActions();
 }
@@ -5440,7 +5672,9 @@ function openRewardScreen() {
   if (isBossRound(G.roundNum)) {
     G._rerollCharges += 1;
     G._bossesCleared = (G._bossesCleared || 0) + 1;
-    log(`🏆 Boss cleared! +1 reroll granted (${G._rerollCharges} total). Bosses cleared: ${G._bossesCleared}.`, 'gold');
+    _totalBossesCleared++;
+    saveLegacyState();
+    log(`🏆 Boss cleared! +1 reroll granted (${G._rerollCharges} total). Total bosses cleared: ${_totalBossesCleared}.`, 'gold');
   }
   // Ace in the Hole: add a random Ace to deck on every successful round
   if (G.relics.includes('ace_in_hole')) {
@@ -5459,7 +5693,7 @@ function openRewardScreen() {
   document.getElementById('reward-title').textContent = `${roundLabel()} Cleared!`;
   const rerollInfo = G._rerollCharges > 0 ? ` · 🎲 ${G._rerollCharges} reroll${G._rerollCharges !== 1 ? 's' : ''}` : '';
   const vaultInfo = (G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? ` · 🏦 ${G._vaultRoundsLeft} vault round${G._vaultRoundsLeft !== 1 ? 's' : ''} left` : '';
-  document.getElementById('reward-subtitle').textContent = `${G.score} pts · Choose ${(G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? 3 : 2} rewards for ${nextRoundLabel()}${rerollInfo}${vaultInfo}`;
+  document.getElementById('reward-subtitle').textContent = `${fmtScore(G.score)} pts · Choose ${(G.relics.includes('the_vault') && G._vaultRoundsLeft > 0) ? 3 : 2} rewards for ${nextRoundLabel()}${rerollInfo}${vaultInfo}`;
   renderRewardTokens();
   renderRewardActions();
 }
@@ -6530,7 +6764,7 @@ function animateScore(fromScore, toScore, durationMs, onDone) {
 
 function updateHUDScoreOnly() {
   const disp = _displayScore;
-  document.getElementById('hud-score').textContent = disp;
+  document.getElementById('hud-score').textContent = fmtScore(disp);
   const pct = target() > 0 ? Math.min(100, disp / target() * 100) : 0;
   const bar = document.getElementById('score-bar');
   bar.style.width = pct + '%';
@@ -6650,7 +6884,11 @@ function renderDbgRelicPicker(filter) {
   const rows = relics.map(r => {
     const col = DBG_TIER_COLOURS[r.tier] || '#6a6058';
     const owned = G && G.relics && G.relics.includes(r.key);
-    return `<div class="dbg-relic-row" onclick="dbgAddRelic('${r.key}')">
+    const removeBtn = owned
+      ? `<button onclick="event.stopPropagation();dbgRemoveRelic('${r.key}')" title="Remove relic" style="position:absolute;top:4px;right:6px;background:none;border:none;color:#cc3333;font-size:14px;cursor:pointer;line-height:1;padding:2px 4px;">✕</button>`
+      : '';
+    return `<div class="dbg-relic-row" onclick="dbgAddRelic('${r.key}')" style="position:relative;">
+      ${removeBtn}
       <div class="dbg-relic-art">${r.art}</div>
       <div class="dbg-relic-info">
         <div class="dbg-relic-name">${r.name}${owned ? ' <span style="color:#3a8a5a">✓ owned</span>' : ''}</div>
@@ -6696,7 +6934,18 @@ function dbgAddRelic(key) {
   G.relics.push(key);
   updateHUD(); renderActions();
   dbgStatus(`Added relic: ${r.name}`);
-  // Re-render in place so search/tier state is preserved and "owned" updates
+  const search = document.getElementById('dbg-relic-search');
+  renderDbgRelicPicker(search ? search.value : '');
+}
+
+function dbgRemoveRelic(key) {
+  if (!G || !G.relics) { dbgStatus('No active game state'); return; }
+  const r = ALL_RELICS.find(x => x.key === key);
+  const idx = G.relics.indexOf(key);
+  if (idx === -1) return;
+  G.relics.splice(idx, 1);
+  updateHUD(); renderActions();
+  dbgStatus(`Removed relic: ${r ? r.name : key}`);
   const search = document.getElementById('dbg-relic-search');
   renderDbgRelicPicker(search ? search.value : '');
 }
@@ -6740,7 +6989,7 @@ function renderDbgSetRound() {
   const bossOpts = [
     { key: null,   label: '(default)',   desc: 'Use normal schedule / no boss' },
     { key: 'none', label: '✗ No boss',   desc: 'Force non-boss round' },
-    ...BOSS_LIST.map(b => ({ key: b.key, label: `${b.art} ${b.name}`, desc: b.rule || '' }))
+    ...BOSS_LIST.map(b => ({ key: b.key, label: `${b.art} ${b.name}`, desc: b.rule || b.note || b.tagline || '(rule set dynamically at round start)' }))
   ].map(opt => {
     const sel = _dbgBossOverride === opt.key;
     const col = sel ? '#cc3333' : '#3a2020';
