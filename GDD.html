@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dead Man's Switch — Game Design Document v0.8.27</title>
+<title>Dead Man's Switch — Game Design Document v0.8.32</title>
 <style>
   :root {
     --bg:       #0e0e1a;
@@ -248,7 +248,7 @@
   <div class="title-block">
     <h1>Dead Man's Switch</h1>
     <div class="subtitle">Game Design Document</div>
-    <div class="version">v0.8.27</div>
+    <div class="version">v0.8.32</div>
   </div>
 
   <!-- ══ 1. OVERVIEW ══════════════════════════════════════════ -->
@@ -315,6 +315,7 @@
   </table>
   </div>
   <p class="callout">The Full Hand ×3 bonus is applied after all other multipliers — including hand-size, queen, and relic multipliers.</p>
+  <p class="callout blue"><strong>Score display:</strong> Values ≥ 1,000,000,000 are shown in scientific notation — e.g. <code>1.234e9</code> for 1,234,000,000 (4 significant figures).</p>
 
   <!-- ══ 4. CARD LEVELS ════════════════════════════════════════ -->
   <h1 id="card-levels">4. Card Levels</h1>
@@ -444,6 +445,9 @@
   <div class="callout blue">
     <strong>Jack Bonus Slots:</strong> After a Jack, bonus slots let you stage additional cards matching the <em>suit or number</em> of the last non-Jack staged card. L1/L2 = 1 slot; L3 = 2 slots.
   </div>
+  <div class="callout blue">
+    <strong>Power Surge relic:</strong> The first power card played each hand fires its power twice. All draw counts, discard recoveries, extra hands, surge bonuses, and queen multiplier contributions are doubled for that card.
+  </div>
   <div class="callout">
     <strong>Queen Stacking:</strong> Default is additive — playing 3× L2 Queens = ×9 on the next hand. With <strong>Blood Pact</strong> relic this becomes multiplicative (3× L2 = ×27), but each Queen costs 1 extra hand.
   </div>
@@ -467,6 +471,14 @@
       <tr><td>🎒 Full House</td><td>Once per round, discard your entire hand and draw 7 fresh cards.</td></tr>
       <tr><td>⚒️ The Anvil</td><td>Playing a card that matches the middle card's number scores +150 bonus.</td></tr>
       <tr><td>🧩 Odd Fit</td><td>Cards that match by number only (not suit) each score +40 bonus.</td></tr>
+      <tr><td>🔭 Gies a Swatch</td><td>Deck preview shows cards in draw order (next drawn first) rather than sorted. Top 3 cards labelled Next / 2nd / 3rd.</td></tr>
+      <tr><td>🃏 Patient Gambler</td><td>Playing a single card draws 2 extra cards at the start of your next turn.</td></tr>
+      <tr><td>🤖 AI Fingers</td><td>Draw back to 8 cards by default instead of 7.</td></tr>
+      <tr><td>2️⃣ Evens</td><td>Even-numbered cards (2, 4, 6, 8, 10) score 50% more base points. Does not apply when Dyscalculia is active.</td></tr>
+      <tr><td>1️⃣ Odds</td><td>Odd-numbered cards (A, 3, 5, 7, 9) score 50% more base points. Stacks with Dead Man's Hand — Ace scores 300 pts. Does not apply when Dyscalculia is active.</td></tr>
+      <tr><td>🎰 Gambler's Anonymous</td><td>10% chance any hand scores double (banner shown). Otherwise all hands score 10% less. Preview always shows the reduced value.</td></tr>
+      <tr><td>🎰 Slot Machine</td><td>If you hold 3 or more 7s at the start of a hand, score max(1,000, 20% of target) bonus pts. Triggers once per round.</td></tr>
+      <tr><td>⚡ Power Surge</td><td>The first power card played each hand fires its power twice. Stackable powers count doubled.</td></tr>
     </tbody>
   </table>
   </div>
@@ -550,12 +562,14 @@
       <tr><td>8</td><td>3</td><td>Boss</td><td>2,000 pts</td></tr>
       <tr><td>12</td><td>4</td><td>Boss</td><td>4,300 pts</td></tr>
       <tr><td>24</td><td>8</td><td>Boss — Tier 8 Final</td><td>25,000 pts</td></tr>
-      <tr><td>27</td><td>9</td><td>Endless Boss</td><td>37,000 pts</td></tr>
-      <tr><td>36</td><td>12</td><td>Endless Boss</td><td>190,000 pts</td></tr>
-      <tr><td>54</td><td>18</td><td>Endless Boss — Final</td><td>5,400,000 pts</td></tr>
+      <tr><td>27</td><td>9</td><td>Endless Boss</td><td>37,000 pts (T9 unchanged)</td></tr>
+      <tr><td>36</td><td>12</td><td>Endless Boss</td><td>900,000 pts</td></tr>
+      <tr><td>54</td><td>18</td><td>Endless Boss — Final</td><td>656,100,000 pts</td></tr>
     </tbody>
   </table>
   </div>
+
+  <div class="callout blue"><strong>Endless scaling (T11+):</strong> From Tier 11 onward, targets scale roughly ×3 per tier. T11 Boss = 300k · T12 = 900k · T13 = 2.7M · T14 = 8.1M · T15 = 24.3M · T16 = 72.9M · T17 = 218.7M · T18 = 656.1M. Values ≥1B display in scientific notation.</div>
 
   <h2>7.3 Reward Screen</h2>
   <p>After each round, choose 2 rewards (3 with The Vault relic):</p>
@@ -642,12 +656,17 @@
       <tr><td class="gold">wasBossRound</td><td>Determined by <code>isBossRound(G.roundNum)</code> — reads from <code>G.bossSchedule</code>, which the debug tool also writes to, so debug-forced bosses are treated identically to naturally scheduled ones.</td></tr>
       <tr><td class="gold">Feedback Loop</td><td>Hooked into <code>postHandSettle</code> — the single post-hand function called by all execution paths (single card, chain, same-number, dump, Jack chain). Reshuffles remaining hand back, redraws same count, including any cards drawn by card powers in that hand.</td></tr>
       <tr><td class="gold">Joker tick timing</td><td><code>tickJokersPerTurn</code> fires in <code>finishStartRound</code> (first hand) and at the end of <code>postHandSettle</code> (subsequent hands), after <code>drawUp</code> but before <code>renderActions</code>.</td></tr>
+      <tr><td class="gold">Slot Machine</td><td><code>checkSlotMachine()</code> called in <code>finishStartRound</code> and <code>postHandSettle</code>. Uses <code>G._slotMachineUsed</code> flag (reset each round) to fire at most once per round.</td></tr>
+      <tr><td class="gold">Power Surge</td><td><code>G._powerSurgePending</code> armed at the start of each hand. First call to <code>firePower</code> captures <code>_surgeMult = 2</code> and clears the flag. All power branches (2, 6, 8, 10, J, Q, K) multiply their effect by <code>_surgeMult</code>.</td></tr>
+      <tr><td class="gold">Gambler's Anonymous</td><td>Applied in <code>applyScore</code> after all other multipliers. Preview always uses ×0.9 (pessimistic). The ×2 double is shown via the combo banner.</td></tr>
+      <tr><td class="gold">Evens / Odds</td><td>Applied as flat bonus to base scores after the Dyscalculia override. Odds covers {A, 3, 5, 7, 9} only — J/Q/K excluded. Ace bonus uses effective base (200 with Dead Man's Hand), so Odds + Dead Man's Hand gives 300 pts for Ace.</td></tr>
+      <tr><td class="gold">fmtScore(n)</td><td>Score formatting helper. Returns <code>1.234e9</code> for values ≥1,000,000,000 (4 significant figures, lowercase e). Applied everywhere scores are displayed: HUD, target, preview button, score pops, reward screen, end screen, Glass Ceiling rule text.</td></tr>
     </tbody>
   </table>
   </div>
 
   <hr class="section-rule">
-  <p style="text-align:center; color:var(--dim); font-style:italic; font-size:13px;">— End of Document — v0.8.27</p>
+  <p style="text-align:center; color:var(--dim); font-style:italic; font-size:13px;">— End of Document — v0.8.32</p>
 
 </main>
 </div>
